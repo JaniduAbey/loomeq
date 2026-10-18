@@ -17,15 +17,47 @@ export class AudioEngine {
 
     // Filter banks
     this.bandFilters = []; // 10-band graphic / smart filters
-    this.roomFilter = null; // Room boundary compensation
-    this.dialogueFilter = null; // Vocal presence boost
-    this.bassBoostFilter = null; // Smart dynamic bass boost
-    this.compressorNode = null; // Night mode compressor
+    this.googleBassFilter = null; // Dedicated 160Hz Low Shelf
+    this.googleTrebleFilter = null; // Dedicated 3200Hz High Shelf
+    this.googleBassGain = 0;
+    this.googleTrebleGain = 0;
+    this.currentBands10 = new Array(10).fill(0);
+
+    // Master Input Bus (routes all audio through dedicated shelves and filters)
+    this.inputBus = null;
+
+    // Auto-Gain Loudness Normalizer (eliminates volume jumps when boosting bass/treble)
+    this.autoGainNode = null;
+    this.isAutoGainEnabled = true;
+
+    // Analog Color & Tube Drive
+    this.tubeSaturationNode = null;
+    this.tubeDrive = 0.0; // 0 to 1
+
+    // Spatial Stereo Width (0.0 = Mono, 1.0 = Normal, 2.0 = Super Wide)
+    this.stereoWidth = 1.0;
+    this.widthSplitter = null;
+    this.widthMerger = null;
+    this.gainLL = null;
+    this.gainLR = null;
+    this.gainRL = null;
+    this.gainRR = null;
+
+    // Acoustic & Compressor
+    this.roomFilter = null;
+    this.dialogueFilter = null;
+    this.bassBoostFilter = null;
+    this.compressorNode = null;
     this.dryGainNode = null;
     this.wetGainNode = null;
     this.pannerNode = null;
     this.masterGainNode = null;
+
+    // Dual Channel Analysers for Hardware LED Meters
     this.analyserNode = null;
+    this.analyserL = null;
+    this.analyserR = null;
+    this.channelSplitterNode = null;
 
     // Track states
     this.onStateChangeCallbacks = new Set();
@@ -33,13 +65,13 @@ export class AudioEngine {
 
     // Night mode & acoustic states
     this.acousticSettings = {
-      roomPlacement: 'free', // 'free' | 'wall' | 'corner' | 'bookshelf'
+      roomPlacement: 'free',
       dialogueBoost: false,
-      dialogueBoostAmount: 3.5, // dB
+      dialogueBoostAmount: 3.5,
       dynamicBass: false,
-      dynamicBassAmount: 4.0, // dB
+      dynamicBassAmount: 4.0,
       nightMode: false,
-      stereoBalance: 0, // -1 to 1
+      stereoBalance: 0,
     };
   }
 
@@ -49,14 +81,26 @@ export class AudioEngine {
     const AudioContextClass = window.AudioContext || window.webkitAudioContext;
     this.ctx = new AudioContextClass();
 
-    // Create Analyser
+    // Master Analyser (1024-FFT)
     this.analyserNode = this.ctx.createAnalyser();
     this.analyserNode.fftSize = 1024;
     this.analyserNode.smoothingTimeConstant = 0.82;
 
-    // Master Gain
+    // Dual Channel Analysers for Hardware LED Meter Bridge (L & R Peak/RMS)
+    this.analyserL = this.ctx.createAnalyser();
+    this.analyserL.fftSize = 256;
+    this.analyserR = this.ctx.createAnalyser();
+    this.analyserR.fftSize = 256;
+    this.channelSplitterNode = this.ctx.createChannelSplitter(2);
+    this.channelSplitterNode.connect(this.analyserL, 0);
+    this.channelSplitterNode.connect(this.analyserR, 1);
+
+    // Master Gain & Auto-Gain Loudness Normalizer
     this.masterGainNode = this.ctx.createGain();
     this.masterGainNode.gain.setValueAtTime(this.masterVolume, this.ctx.currentTime);
+
+    this.autoGainNode = this.ctx.createGain();
+    this.autoGainNode.gain.setValueAtTime(1.0, this.ctx.currentTime);
 
     // Stereo Panner
     if (this.ctx.createStereoPanner) {
@@ -70,28 +114,48 @@ export class AudioEngine {
     this.dryGainNode = this.ctx.createGain();
     this.dryGainNode.gain.setValueAtTime(0, this.ctx.currentTime);
 
+    // Master Input Bus
+    this.inputBus = this.ctx.createGain();
+    this.inputBus.gain.setValueAtTime(1.0, this.ctx.currentTime);
+
+    // Tube Saturation WaveShaper
+    this.tubeSaturationNode = this.ctx.createWaveShaper();
+    this.tubeSaturationNode.curve = this.createDistortionCurve(0);
+    this.tubeSaturationNode.oversample = '4x';
+
+    // Dedicated Google Home 2-Band Shelf Filters
+    this.googleBassFilter = this.ctx.createBiquadFilter();
+    this.googleBassFilter.type = 'lowshelf';
+    this.googleBassFilter.frequency.setValueAtTime(160, this.ctx.currentTime);
+    this.googleBassFilter.gain.setValueAtTime(0, this.ctx.currentTime);
+
+    this.googleTrebleFilter = this.ctx.createBiquadFilter();
+    this.googleTrebleFilter.type = 'highshelf';
+    this.googleTrebleFilter.frequency.setValueAtTime(3200, this.ctx.currentTime);
+    this.googleTrebleFilter.gain.setValueAtTime(0, this.ctx.currentTime);
+
     // Night Mode Compressor
     this.compressorNode = this.ctx.createDynamicsCompressor();
     this.compressorNode.threshold.setValueAtTime(-24, this.ctx.currentTime);
     this.compressorNode.knee.setValueAtTime(30, this.ctx.currentTime);
-    this.compressorNode.ratio.setValueAtTime(1, this.ctx.currentTime); // Off initially (ratio=1)
+    this.compressorNode.ratio.setValueAtTime(1, this.ctx.currentTime);
     this.compressorNode.attack.setValueAtTime(0.003, this.ctx.currentTime);
     this.compressorNode.release.setValueAtTime(0.25, this.ctx.currentTime);
 
-    // Dialogue Clarity Filter (Peaking at 3kHz, Q=1.4)
+    // Dialogue Clarity Filter
     this.dialogueFilter = this.ctx.createBiquadFilter();
     this.dialogueFilter.type = 'peaking';
     this.dialogueFilter.frequency.setValueAtTime(3000, this.ctx.currentTime);
     this.dialogueFilter.Q.setValueAtTime(1.4, this.ctx.currentTime);
     this.dialogueFilter.gain.setValueAtTime(0, this.ctx.currentTime);
 
-    // Dynamic Bass Boost Filter (Low-shelf at 90Hz)
+    // Dynamic Bass Boost Filter
     this.bassBoostFilter = this.ctx.createBiquadFilter();
     this.bassBoostFilter.type = 'lowshelf';
     this.bassBoostFilter.frequency.setValueAtTime(90, this.ctx.currentTime);
     this.bassBoostFilter.gain.setValueAtTime(0, this.ctx.currentTime);
 
-    // Room Boundary Compensation Filter (Low-shelf)
+    // Room Boundary Filter
     this.roomFilter = this.ctx.createBiquadFilter();
     this.roomFilter.type = 'lowshelf';
     this.roomFilter.frequency.setValueAtTime(160, this.ctx.currentTime);
@@ -113,18 +177,52 @@ export class AudioEngine {
       return filter;
     });
 
-    // Connect the 10 bands sequentially
+    // Wire 10 graphic bands sequentially
     for (let i = 0; i < this.bandFilters.length - 1; i++) {
       this.bandFilters[i].connect(this.bandFilters[i + 1]);
     }
 
-    // Connect last band to room, bass boost, dialogue, compressor, then wetGain
+    // Mid/Side Spatial Stereo Width Matrix
+    this.widthSplitter = this.ctx.createChannelSplitter(2);
+    this.widthMerger = this.ctx.createChannelMerger(2);
+    this.gainLL = this.ctx.createGain();
+    this.gainLR = this.ctx.createGain();
+    this.gainRL = this.ctx.createGain();
+    this.gainRR = this.ctx.createGain();
+
+    this.gainLL.gain.setValueAtTime(1.0, this.ctx.currentTime);
+    this.gainLR.gain.setValueAtTime(0.0, this.ctx.currentTime);
+    this.gainRL.gain.setValueAtTime(0.0, this.ctx.currentTime);
+    this.gainRR.gain.setValueAtTime(1.0, this.ctx.currentTime);
+
+    this.widthSplitter.connect(this.gainLL, 0);
+    this.widthSplitter.connect(this.gainRL, 0);
+    this.widthSplitter.connect(this.gainRR, 1);
+    this.widthSplitter.connect(this.gainLR, 1);
+
+    this.gainLL.connect(this.widthMerger, 0, 0);
+    this.gainLR.connect(this.widthMerger, 0, 0);
+    this.gainRL.connect(this.widthMerger, 0, 1);
+    this.gainRR.connect(this.widthMerger, 0, 1);
+
+    // Route Input Bus to wet Google shelves and dry bypass
+    this.inputBus.connect(this.googleBassFilter);
+    this.inputBus.connect(this.dryGainNode);
+
+    // Wet chain connection:
+    // inputBus -> googleBass -> googleTreble -> 10-band chain -> room -> bassBoost -> dialogue -> tubeSat -> autoGain -> compressor -> stereoWidth -> wetGain
+    this.googleBassFilter.connect(this.googleTrebleFilter);
+    this.googleTrebleFilter.connect(this.bandFilters[0]);
+
     const lastBand = this.bandFilters[this.bandFilters.length - 1];
     lastBand.connect(this.roomFilter);
     this.roomFilter.connect(this.bassBoostFilter);
     this.bassBoostFilter.connect(this.dialogueFilter);
-    this.dialogueFilter.connect(this.compressorNode);
-    this.compressorNode.connect(this.wetGainNode);
+    this.dialogueFilter.connect(this.tubeSaturationNode);
+    this.tubeSaturationNode.connect(this.autoGainNode);
+    this.autoGainNode.connect(this.compressorNode);
+    this.compressorNode.connect(this.widthSplitter);
+    this.widthMerger.connect(this.wetGainNode);
 
     // Recombine wet and dry to panner, master, analyser, destination
     if (this.pannerNode) {
@@ -143,6 +241,7 @@ export class AudioEngine {
     this.isStreamingToSpeaker = false;
 
     this.masterGainNode.connect(this.analyserNode);
+    this.masterGainNode.connect(this.channelSplitterNode);
     this.analyserNode.connect(this.localMonitorGainNode);
     this.localMonitorGainNode.connect(this.ctx.destination);
 
@@ -150,7 +249,6 @@ export class AudioEngine {
     try {
       this.streamProcessorNode = this.ctx.createScriptProcessor(4096, 2, 2);
       this.masterGainNode.connect(this.streamProcessorNode);
-      // Connect to zero-gain dummy node so it doesn't leak into destination
       const dummyGain = this.ctx.createGain();
       dummyGain.gain.setValueAtTime(0, this.ctx.currentTime);
       this.streamProcessorNode.connect(dummyGain);
@@ -181,7 +279,7 @@ export class AudioEngine {
       console.warn('ScriptProcessor not available:', e);
     }
 
-    // Create an underlying HTML5 Audio element for custom uploads / streams
+    // HTML5 Audio element
     this.audioElement = new Audio();
     this.audioElement.crossOrigin = 'anonymous';
     this.audioElement.loop = true;
@@ -194,9 +292,53 @@ export class AudioEngine {
     });
 
     this.sourceNode = this.ctx.createMediaElementSource(this.audioElement);
-    // Split input to both wet path (band 0) and dry path (dryGainNode)
-    this.sourceNode.connect(this.bandFilters[0]);
-    this.sourceNode.connect(this.dryGainNode);
+    this.sourceNode.connect(this.inputBus);
+  }
+
+  createDistortionCurve(amount) {
+    const k = amount * 40;
+    const n = 44100;
+    const curve = new Float32Array(n);
+    const deg = Math.PI / 180;
+    for (let i = 0; i < n; ++i) {
+      const x = (i * 2) / n - 1;
+      if (k === 0) {
+        curve[i] = x;
+      } else {
+        curve[i] = ((3 + k) * x * 20 * deg) / (Math.PI + k * Math.abs(x));
+      }
+    }
+    return curve;
+  }
+
+  setTubeWarmth(driveAmount) {
+    this.tubeDrive = Math.max(0, Math.min(1, driveAmount));
+    if (this.tubeSaturationNode) {
+      this.tubeSaturationNode.curve = this.createDistortionCurve(this.tubeDrive);
+    }
+  }
+
+  setAutoGainEnabled(enabled) {
+    this.isAutoGainEnabled = enabled;
+    this.updateAutoGain();
+  }
+
+  // Auto-gain loudness compensation: ensures boosting bass or treble shapes the tone without blowing out the volume
+  updateAutoGain() {
+    if (!this.autoGainNode || !this.ctx) return;
+    if (!this.isAutoGainEnabled) {
+      this.autoGainNode.gain.setTargetAtTime(1.0, this.ctx.currentTime, 0.02);
+      return;
+    }
+
+    const bassBoost = Math.max(0, this.googleBassGain);
+    const trebleBoost = Math.max(0, this.googleTrebleGain);
+    const graphicAvg = this.currentBands10.reduce((acc, g) => acc + Math.max(0, g), 0) / 10;
+
+    // Fletcher-Munson dynamic loudness compensation
+    const compDb = -(bassBoost * 0.35 + trebleBoost * 0.2 + graphicAvg * 0.4);
+    const compGain = Math.max(0.28, Math.min(1.15, Math.pow(10, compDb / 20)));
+    this.autoGainNode.gain.setTargetAtTime(compGain, this.ctx.currentTime, 0.02);
   }
 
   async ensureContextActive() {
@@ -210,7 +352,9 @@ export class AudioEngine {
   setBandGain(index, gainDb) {
     if (!this.bandFilters[index]) return;
     const clampedGain = Math.max(-12, Math.min(12, gainDb));
-    this.bandFilters[index].gain.setTargetAtTime(clampedGain, this.ctx.currentTime, 0.04);
+    this.currentBands10[index] = clampedGain;
+    this.bandFilters[index].gain.setTargetAtTime(clampedGain, this.ctx.currentTime, 0.015);
+    this.updateAutoGain();
   }
 
   setAllBands(gains) {
@@ -221,36 +365,55 @@ export class AudioEngine {
     });
   }
 
-  // Google Home 2-Band Mode: maps Bass to lower bands and Treble to higher bands
+  // Google Home 2-Band Mode: updates dedicated hardware-matching low & high shelf filters smoothly
   setGoogleHome2Band(bassDb, trebleDb) {
-    // Bass (-6 to +6 dB): affects 31Hz, 63Hz, 125Hz, 250Hz smoothly
     const clampedBass = Math.max(-6, Math.min(6, bassDb));
     const clampedTreble = Math.max(-6, Math.min(6, trebleDb));
 
-    this.setBandGain(0, clampedBass * 1.0); // 31Hz
-    this.setBandGain(1, clampedBass * 0.95); // 63Hz
-    this.setBandGain(2, clampedBass * 0.8); // 125Hz
-    this.setBandGain(3, clampedBass * 0.4); // 250Hz
-    this.setBandGain(4, 0); // 500Hz
-    this.setBandGain(5, 0); // 1kHz
-    this.setBandGain(6, 0); // 2kHz
-    this.setBandGain(7, clampedTreble * 0.4); // 4kHz
-    this.setBandGain(8, clampedTreble * 0.85); // 8kHz
-    this.setBandGain(9, clampedTreble * 1.0); // 16kHz
+    this.googleBassGain = clampedBass;
+    this.googleTrebleGain = clampedTreble;
+
+    if (this.googleBassFilter && this.ctx) {
+      this.googleBassFilter.gain.setTargetAtTime(clampedBass, this.ctx.currentTime, 0.015);
+    }
+    if (this.googleTrebleFilter && this.ctx) {
+      this.googleTrebleFilter.gain.setTargetAtTime(clampedTreble, this.ctx.currentTime, 0.015);
+    }
+
+    this.updateAutoGain();
   }
 
-  // Nest Studio 5-Band Mode: maps 5 bands to the 10 physical filters
-  setNestStudio5Band([bSub, bBass, bMid, bPresence, bTreble]) {
-    this.setBandGain(0, bSub);
-    this.setBandGain(1, (bSub + bBass) / 2);
-    this.setBandGain(2, bBass);
-    this.setBandGain(3, (bBass + bMid) / 2);
-    this.setBandGain(4, bMid);
-    this.setBandGain(5, bMid);
-    this.setBandGain(6, (bMid + bPresence) / 2);
-    this.setBandGain(7, bPresence);
-    this.setBandGain(8, (bPresence + bTreble) / 2);
-    this.setBandGain(9, bTreble);
+  // Get stereo meter levels for hardware 24-segment LED bar
+  getStereoMeterLevels() {
+    if (!this.analyserL || !this.analyserR) {
+      return { leftPeak: 0, rightPeak: 0, leftRms: 0, rightRms: 0 };
+    }
+
+    const bufL = new Float32Array(this.analyserL.fftSize);
+    const bufR = new Float32Array(this.analyserR.fftSize);
+    this.analyserL.getFloatTimeDomainData(bufL);
+    this.analyserR.getFloatTimeDomainData(bufR);
+
+    let sumL = 0, peakL = 0;
+    for (let i = 0; i < bufL.length; i++) {
+      const abs = Math.abs(bufL[i]);
+      if (abs > peakL) peakL = abs;
+      sumL += abs * abs;
+    }
+
+    let sumR = 0, peakR = 0;
+    for (let i = 0; i < bufR.length; i++) {
+      const abs = Math.abs(bufR[i]);
+      if (abs > peakR) peakR = abs;
+      sumR += abs * abs;
+    }
+
+    return {
+      leftPeak: Math.min(1.2, peakL),
+      rightPeak: Math.min(1.2, peakR),
+      leftRms: Math.min(1.0, Math.sqrt(sumL / bufL.length)),
+      rightRms: Math.min(1.0, Math.sqrt(sumR / bufR.length)),
+    };
   }
 
   // --- Acoustic and Smart Audio Controls ---
@@ -295,6 +458,19 @@ export class AudioEngine {
     const threshold = enabled ? -28 : 0;
     this.compressorNode.ratio.setTargetAtTime(ratio, this.ctx.currentTime, 0.05);
     this.compressorNode.threshold.setTargetAtTime(threshold, this.ctx.currentTime, 0.05);
+  }
+
+  setStereoWidth(width) {
+    this.stereoWidth = Math.max(0, Math.min(2.0, width));
+    if (!this.gainLL || !this.ctx) return;
+    const w = this.stereoWidth;
+    const direct = 0.5 * (1 + w);
+    const cross = 0.5 * (1 - w);
+    const now = this.ctx.currentTime;
+    this.gainLL.gain.setTargetAtTime(direct, now, 0.02);
+    this.gainRR.gain.setTargetAtTime(direct, now, 0.02);
+    this.gainLR.gain.setTargetAtTime(cross, now, 0.02);
+    this.gainRL.gain.setTargetAtTime(cross, now, 0.02);
   }
 
   setStereoBalance(balance) {
@@ -347,6 +523,16 @@ export class AudioEngine {
       }
     });
 
+    // Include dedicated Google Home bass/treble shelf filters
+    if (this.googleBassFilter) {
+      this.googleBassFilter.getFrequencyResponse(frequencies, tempMag, tempPhase);
+      for (let i = 0; i < numPoints; i++) magCombined[i] *= tempMag[i];
+    }
+    if (this.googleTrebleFilter) {
+      this.googleTrebleFilter.getFrequencyResponse(frequencies, tempMag, tempPhase);
+      for (let i = 0; i < numPoints; i++) magCombined[i] *= tempMag[i];
+    }
+
     // Include room filter
     if (this.roomFilter) {
       this.roomFilter.getFrequencyResponse(frequencies, tempMag, tempPhase);
@@ -365,10 +551,15 @@ export class AudioEngine {
       for (let i = 0; i < numPoints; i++) magCombined[i] *= tempMag[i];
     }
 
-    // Convert magnitude ratio to dB: 20 * log10(magnitude)
+    // Auto-gain offset in dB
+    const autoGainDb = this.autoGainNode && this.autoGainEnabled 
+      ? 20 * Math.log10(Math.max(1e-4, this.autoGainNode.gain.value))
+      : 0;
+
+    // Convert magnitude ratio to dB: 20 * log10(magnitude) + autoGainDb
     const dbValues = new Float32Array(numPoints);
     for (let i = 0; i < numPoints; i++) {
-      dbValues[i] = 20 * Math.log10(Math.max(1e-5, magCombined[i]));
+      dbValues[i] = (20 * Math.log10(Math.max(1e-5, magCombined[i]))) + autoGainDb;
     }
     return dbValues;
   }
@@ -440,9 +631,8 @@ export class AudioEngine {
       this.capturedStream = stream;
       this.capturedSourceNode = this.ctx.createMediaStreamSource(stream);
 
-      // Connect captured live audio directly into the EQ chain
-      this.capturedSourceNode.connect(this.bandFilters[0]);
-      this.capturedSourceNode.connect(this.dryGainNode);
+      // Connect captured live audio directly into the EQ input bus
+      this.capturedSourceNode.connect(this.inputBus);
 
       // MUTE local monitor in headsets by default to prevent double hearing / echo!
       if (this.localMonitorGainNode) {
@@ -633,8 +823,7 @@ export class AudioEngine {
     gain.gain.exponentialRampToValueAtTime(0.001, time + 0.22);
 
     osc.connect(gain);
-    gain.connect(this.bandFilters[0]);
-    gain.connect(this.dryGainNode);
+    gain.connect(this.inputBus);
 
     osc.start(time);
     osc.stop(time + 0.25);
@@ -663,8 +852,7 @@ export class AudioEngine {
 
     noise.connect(noiseFilter);
     noiseFilter.connect(gain);
-    gain.connect(this.bandFilters[0]);
-    gain.connect(this.dryGainNode);
+    gain.connect(this.inputBus);
 
     noise.start(time);
   }
@@ -691,8 +879,7 @@ export class AudioEngine {
 
     noise.connect(filter);
     filter.connect(gain);
-    gain.connect(this.bandFilters[0]);
-    gain.connect(this.dryGainNode);
+    gain.connect(this.inputBus);
 
     noise.start(time);
   }
@@ -715,8 +902,7 @@ export class AudioEngine {
 
     osc.connect(filter);
     filter.connect(gain);
-    gain.connect(this.bandFilters[0]);
-    gain.connect(this.dryGainNode);
+    gain.connect(this.inputBus);
 
     osc.start(time);
     osc.stop(time + duration);
@@ -734,8 +920,7 @@ export class AudioEngine {
     gain.gain.exponentialRampToValueAtTime(0.001, time + duration);
 
     osc.connect(gain);
-    gain.connect(this.bandFilters[0]);
-    gain.connect(this.dryGainNode);
+    gain.connect(this.inputBus);
 
     osc.start(time);
     osc.stop(time + duration);
@@ -764,8 +949,7 @@ export class AudioEngine {
     noiseSource.buffer = buffer;
     noiseSource.loop = true;
 
-    noiseSource.connect(this.bandFilters[0]);
-    noiseSource.connect(this.dryGainNode);
+    noiseSource.connect(this.inputBus);
     noiseSource.start();
     this.activeNoiseSource = noiseSource;
   }
@@ -786,8 +970,7 @@ export class AudioEngine {
     gain.gain.linearRampToValueAtTime(0.001, now + duration);
 
     osc.connect(gain);
-    gain.connect(this.bandFilters[0]);
-    gain.connect(this.dryGainNode);
+    gain.connect(this.inputBus);
 
     osc.start(now);
     osc.stop(now + duration);

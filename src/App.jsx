@@ -20,6 +20,7 @@ import { DeviceModal } from './components/DeviceModal';
 import { PresetManager } from './components/PresetManager';
 import { DevIntegrationModal } from './components/DevIntegrationModal';
 import { NetworkTelemetry } from './components/NetworkTelemetry';
+import { MeterBridge } from './components/MeterBridge';
 import { audioEngine, STANDARD_FREQUENCIES_10 } from './audio/AudioEngine';
 import { deviceService } from './services/deviceService';
 import { presetService, FACTORY_PRESETS } from './services/presetService';
@@ -41,6 +42,12 @@ export function App() {
   const [dynamicBass, setDynamicBass] = useState(true);
   const [nightMode, setNightMode] = useState(false);
   const [stereoBalance, setStereoBalance] = useState(0);
+
+  // Studio Console Rack & Visualizer Customization states
+  const [tubeDrive, setTubeDrive] = useState(0);
+  const [stereoWidth, setStereoWidth] = useState(1.0);
+  const [isAutoGain, setIsAutoGain] = useState(true);
+  const [visualizerTheme, setVisualizerTheme] = useState('cyber');
 
   // Device & Presets
   const [activeDevice, setActiveDevice] = useState(deviceService.getActiveDevice());
@@ -262,6 +269,8 @@ export function App() {
     dialogueBoost,
     dynamicBass,
     nightMode,
+    tubeDrive,
+    stereoWidth,
   };
 
   return (
@@ -334,7 +343,15 @@ export function App() {
               </div>
               <span className="card-hint">Calculated Biquad Transfer Function H(s) + Live 1024-FFT</span>
             </div>
-            <VisualizerCanvas eqVersion={eqVersion} />
+            <VisualizerCanvas
+              eqVersion={eqVersion}
+              bass={bass}
+              treble={treble}
+              onChangeBass={handleBassChange}
+              onChangeTreble={handleTrebleChange}
+              activeTheme={visualizerTheme}
+              onThemeChange={setVisualizerTheme}
+            />
           </div>
 
           {/* Mode View: Classic Google Home 2-Band */}
@@ -352,6 +369,27 @@ export function App() {
                 treble={treble}
                 onChangeBass={handleBassChange}
                 onChangeTreble={handleTrebleChange}
+                tubeDrive={tubeDrive}
+                onChangeTubeDrive={(val) => {
+                  setTubeDrive(val);
+                  setEqVersion((v) => v + 1);
+                }}
+                stereoWidth={stereoWidth}
+                onChangeStereoWidth={(val) => {
+                  setStereoWidth(val);
+                  setEqVersion((v) => v + 1);
+                }}
+                isAutoGain={isAutoGain}
+                onToggleAutoGain={(val) => {
+                  setIsAutoGain(val);
+                  setEqVersion((v) => v + 1);
+                }}
+                dynamicBass={dynamicBass}
+                onToggleDynamicBass={handleToggleDynamicBass}
+                dialogueBoost={dialogueBoost}
+                onToggleDialogueBoost={handleToggleDialogue}
+                nightMode={nightMode}
+                onToggleNightMode={handleToggleNightMode}
               />
             </div>
           )}
@@ -462,8 +500,11 @@ Content-Type: application/json
           )}
         </div>
 
-        {/* Right Column: Acoustics Overview & Live Network Telemetry */}
+        {/* Right Column: Acoustics Overview, Stereo Meter Bridge & Live Network Telemetry */}
         <div className="side-column">
+          {/* Dual Channel 20-Segment Stereo LED Meter Bridge */}
+          <MeterBridge />
+
           {/* Quick Room Acoustic Card (if not already in acoustic tab) */}
           {activeTab !== 'acoustic' && (
             <div className="studio-card">

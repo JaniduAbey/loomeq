@@ -125,13 +125,30 @@ class DeviceService {
     return null;
   }
 
-  // Push EQ settings to the active physical device via CastBridge
-  async pushEqSettings(device, eqData) {
+  // Push EQ settings to the active physical device via CastBridge (debounced for smooth real-time dragging)
+  pushEqSettings(device, eqData) {
+    if (!device || !device.ip) return;
+
+    // Immediately update local device state
+    device.currentEq = {
+      bass: eqData.bass,
+      treble: eqData.treble,
+    };
+    this.notify();
+
+    // Debounce actual CastV2 TLS socket transmission by 70ms so smooth drags don't choke port 8009
+    if (this.pushDebounceTimer) {
+      clearTimeout(this.pushDebounceTimer);
+    }
+
+    this.pushDebounceTimer = setTimeout(async () => {
+      await this.executeCastV2EqPush(device, eqData);
+    }, 70);
+  }
+
+  async executeCastV2EqPush(device, eqData) {
     if (!device || !device.ip) return;
     const timestamp = new Date().toLocaleTimeString();
-
-    this.log(`[${timestamp}] 📡 Transmitting CastV2 SET_USER_EQ to ${device.name} (${device.ip}:8009)...`);
-    this.log(`   Bass: ${eqData.bass.toFixed(1)} dB, Treble: ${eqData.treble.toFixed(1)} dB`);
 
     try {
       const res = await fetch('/api/devices/eq', {
@@ -145,19 +162,10 @@ class DeviceService {
       });
 
       if (res.ok) {
-        const result = await res.json();
-        device.currentEq = {
-          bass: eqData.bass,
-          treble: eqData.treble,
-        };
-        this.log(`[${timestamp}] 🟢 200 OK — Physical speaker "${device.name}" equalizer updated successfully!`);
-        this.notify();
-      } else {
-        const err = await res.json();
-        this.log(`[${timestamp}] 🔴 Error pushing to speaker: ${err.error || res.statusText}`);
+        this.log(`[${timestamp}] 🎛️ CastV2 hardware synced -> Bass: ${eqData.bass >= 0 ? '+' : ''}${eqData.bass.toFixed(1)} dB, Treble: ${eqData.treble >= 0 ? '+' : ''}${eqData.treble.toFixed(1)} dB`);
       }
     } catch (err) {
-      this.log(`[${timestamp}] ⚠️ Push request failed: ${err.message}`);
+      console.warn('CastV2 push failed:', err.message);
     }
   }
 
