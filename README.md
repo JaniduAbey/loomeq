@@ -4,7 +4,7 @@ AuraEQ is a web application and DSP tuning software engineered for custom equali
 
 ---
 
-## 🎛️ How Google Home Equalizer Works Under the Hood
+##  How Google Home Equalizer Works Under the Hood
 
 ### 1. The Cast Eureka Setup API
 Google Home, Google Nest Mini, Nest Audio, and Nest Hub devices run a local HTTP daemon on **port 8008** (and HTTPS on port 8443). The official equalizer settings are managed by the `set_eureka_info` endpoint:
@@ -44,7 +44,7 @@ cast.set_equalizer(bass=2.5, treble=-1.0)
 
 ---
 
-## 🚀 Features
+##  Features
 
 - **Google Home 2-Band Mode:** Tactile radial rotary dials for Bass & Treble with `-6.0 dB` to `+6.0 dB` range matching the Google Home app.
 - **10-Band Studio Graphic EQ:** Pro Biquad peaking filters across standard ISO octave frequencies (31Hz, 63Hz, 125Hz, 250Hz, 500Hz, 1kHz, 2kHz, 4kHz, 8kHz, 16kHz) with $\pm12\text{ dB}$ control.
@@ -67,7 +67,7 @@ cast.set_equalizer(bass=2.5, treble=-1.0)
 
 ---
 
-## 📁 Project Architecture & Clean File Structure
+##  Project Architecture & Clean File Structure
 
 ```
 wirelesseq/
@@ -104,7 +104,7 @@ wirelesseq/
 
 ---
 
-## 🛠️ Getting Started
+##  Getting Started
 
 ```bash
 # 1. Install dependencies
