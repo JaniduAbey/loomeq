@@ -47,7 +47,7 @@ export function App() {
   const [tubeDrive, setTubeDrive] = useState(0);
   const [stereoWidth, setStereoWidth] = useState(1.0);
   const [isAutoGain, setIsAutoGain] = useState(true);
-  const [visualizerTheme, setVisualizerTheme] = useState('cyber');
+  const [visualizerTheme, setVisualizerTheme] = useState('lime');
 
   // Device & Presets
   const [activeDevice, setActiveDevice] = useState(deviceService.getActiveDevice());
@@ -323,75 +323,59 @@ export function App() {
             <span>Implementation Guide</span>
           </button>
         </div>
-
-        <div className="tab-preset-summary">
-          <span>Active Profile:</span>
-          <span className="preset-chip">{activePreset ? activePreset.name : 'Custom'}</span>
-        </div>
       </nav>
 
       {/* Main Studio Grid */}
       <main className="main-layout">
-        {/* Left / Center Column: Visualizer & Active EQ Mode */}
+        {/* Left Column: Master Monitor & Channel Strip */}
         <div className="center-column">
-          {/* Real-time Spectrum & Frequency Response Curve */}
-          <div className="studio-card" style={{ padding: '16px' }}>
-            <div className="card-header" style={{ marginBottom: '12px' }}>
-              <div className="card-title-group">
-                <Activity size={17} className="card-title-icon" />
-                <h2 className="card-title">Real-Time DSP Response & Audio Spectrum</h2>
-              </div>
-              <span className="card-hint">Calculated Biquad Transfer Function H(s) + Live 1024-FFT</span>
-            </div>
-            <VisualizerCanvas
-              eqVersion={eqVersion}
-              bass={bass}
-              treble={treble}
-              onChangeBass={handleBassChange}
-              onChangeTreble={handleTrebleChange}
-              activeTheme={visualizerTheme}
-              onThemeChange={setVisualizerTheme}
-            />
-          </div>
-
-          {/* Mode View: Classic Google Home 2-Band */}
-          {activeTab === 'classic' && (
-            <div className="studio-card">
-              <div className="card-header">
-                <div className="card-title-group">
-                  <Sliders size={18} className="card-title-icon" />
-                  <h2 className="card-title">Google Home Custom Equalizer Controls</h2>
-                </div>
-                <span className="card-hint">Official Google Home App Calibration (-6 dB to +6 dB)</span>
-              </div>
-              <ClassicDials
+          {/* Master Acoustic Monitor: Visualizer + Stereo Meter Bridge */}
+          <div className="master-monitor-card">
+            <div className="visualizer-slot">
+              <VisualizerCanvas
+                eqVersion={eqVersion}
                 bass={bass}
                 treble={treble}
                 onChangeBass={handleBassChange}
                 onChangeTreble={handleTrebleChange}
-                tubeDrive={tubeDrive}
-                onChangeTubeDrive={(val) => {
-                  setTubeDrive(val);
-                  setEqVersion((v) => v + 1);
-                }}
-                stereoWidth={stereoWidth}
-                onChangeStereoWidth={(val) => {
-                  setStereoWidth(val);
-                  setEqVersion((v) => v + 1);
-                }}
-                isAutoGain={isAutoGain}
-                onToggleAutoGain={(val) => {
-                  setIsAutoGain(val);
-                  setEqVersion((v) => v + 1);
-                }}
-                dynamicBass={dynamicBass}
-                onToggleDynamicBass={handleToggleDynamicBass}
-                dialogueBoost={dialogueBoost}
-                onToggleDialogueBoost={handleToggleDialogue}
-                nightMode={nightMode}
-                onToggleNightMode={handleToggleNightMode}
+                activeTheme={visualizerTheme}
+                onThemeChange={setVisualizerTheme}
               />
             </div>
+            <div className="meter-slot">
+              <MeterBridge />
+            </div>
+          </div>
+
+          {/* Mode View: Classic 2-Band Channel Strip */}
+          {activeTab === 'classic' && (
+            <ClassicDials
+              bass={bass}
+              treble={treble}
+              onChangeBass={handleBassChange}
+              onChangeTreble={handleTrebleChange}
+              tubeDrive={tubeDrive}
+              onChangeTubeDrive={(val) => {
+                setTubeDrive(val);
+                setEqVersion((v) => v + 1);
+              }}
+              stereoWidth={stereoWidth}
+              onChangeStereoWidth={(val) => {
+                setStereoWidth(val);
+                setEqVersion((v) => v + 1);
+              }}
+              isAutoGain={isAutoGain}
+              onToggleAutoGain={(val) => {
+                setIsAutoGain(val);
+                setEqVersion((v) => v + 1);
+              }}
+              dynamicBass={dynamicBass}
+              onToggleDynamicBass={handleToggleDynamicBass}
+              dialogueBoost={dialogueBoost}
+              onToggleDialogueBoost={handleToggleDialogue}
+              nightMode={nightMode}
+              onToggleNightMode={handleToggleNightMode}
+            />
           )}
 
           {/* Mode View: Studio Graphic 10-Band */}
@@ -500,11 +484,8 @@ Content-Type: application/json
           )}
         </div>
 
-        {/* Right Column: Acoustics Overview, Stereo Meter Bridge & Live Network Telemetry */}
+        {/* Right Column: Acoustics Overview & Live Network Telemetry */}
         <div className="side-column">
-          {/* Dual Channel 20-Segment Stereo LED Meter Bridge */}
-          <MeterBridge />
-
           {/* Quick Room Acoustic Card (if not already in acoustic tab) */}
           {activeTab !== 'acoustic' && (
             <div className="studio-card">

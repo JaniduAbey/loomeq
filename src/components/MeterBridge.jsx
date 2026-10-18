@@ -1,16 +1,15 @@
 import React, { useRef, useEffect, useState } from 'react';
 import { audioEngine } from '../audio/AudioEngine';
 
-const SEGMENTS = 20;
+const SEGMENTS = 18;
 
-// dB markings for the meter scale
 const SCALE_MARKERS = [
-  { db: '+3', pct: 95, color: '#ef4444' },
-  { db: '0', pct: 85, color: '#f59e0b' },
-  { db: '-6', pct: 68, color: '#22c55e' },
-  { db: '-12', pct: 50, color: '#22c55e' },
-  { db: '-24', pct: 30, color: '#22c55e' },
-  { db: '-48', pct: 10, color: '#22c55e' },
+  { db: '+3', pct: 95, color: '#f43f5e' },
+  { db: '0', pct: 85, color: '#fbbf24' },
+  { db: '-6', pct: 68, color: '#10f27c' },
+  { db: '-12', pct: 50, color: '#10f27c' },
+  { db: '-24', pct: 30, color: '#10f27c' },
+  { db: '-48', pct: 10, color: '#10f27c' },
 ];
 
 export function MeterBridge() {
@@ -43,12 +42,10 @@ export function MeterBridge() {
       ctx.scale(dpr, dpr);
       ctx.clearRect(0, 0, w, h);
 
-      // Fetch stereo levels from AudioEngine
       const levels = audioEngine.getStereoMeterLevels();
       const rawL = levels.leftPeak || 0;
       const rawR = levels.rightPeak || 0;
 
-      // Peak decay
       peakL = Math.max(rawL, peakL - 0.012);
       peakR = Math.max(rawR, peakR - 0.012);
 
@@ -59,45 +56,39 @@ export function MeterBridge() {
         setClipAlert(false);
       }
 
-      // Convert amplitude to dB for readout
       const toDb = (amp) => {
         if (amp < 0.001) return '-inf';
         const db = 20 * Math.log10(amp);
-        return `${db >= 0 ? '+' : ''}${db.toFixed(1)} dB`;
+        return `${db >= 0 ? '+' : ''}${db.toFixed(1)}`;
       };
       setMeterDb({ l: toDb(rawL), r: toDb(rawR) });
 
-      // Draw two vertical LED ladders
-      const chWidth = (w - 18) / 2;
+      const chWidth = (w - 14) / 2;
       const drawChannel = (startX, rmsLevel, peakLevel) => {
-        const segHeight = (h - 24) / SEGMENTS;
+        const segHeight = (h - 20) / SEGMENTS;
         const gap = 2;
 
         for (let i = 0; i < SEGMENTS; i++) {
-          const segIndexFromBottom = i;
-          const segNorm = (segIndexFromBottom + 1) / SEGMENTS;
-          const y = h - 16 - (i + 1) * segHeight;
+          const segNorm = (i + 1) / SEGMENTS;
+          const y = h - 14 - (i + 1) * segHeight;
 
           const isRmsLit = rmsLevel >= segNorm;
           const isPeakLit = peakLevel >= segNorm && peakLevel < segNorm + (1 / SEGMENTS) * 1.5;
 
-          // Determine color based on threshold
           let activeColor, offColor, glowColor;
           if (segNorm > 0.88) {
-            // Clip zone (Red)
-            activeColor = '#ef4444';
-            offColor = 'rgba(239, 68, 68, 0.12)';
-            glowColor = 'rgba(239, 68, 68, 0.7)';
-          } else if (segNorm > 0.7) {
-            // Warning zone (Amber)
-            activeColor = '#f59e0b';
-            offColor = 'rgba(245, 158, 11, 0.12)';
-            glowColor = 'rgba(245, 158, 11, 0.5)';
+            activeColor = '#f43f5e';
+            offColor = 'rgba(244, 63, 94, 0.1)';
+            glowColor = 'rgba(244, 63, 94, 0.7)';
+          } else if (segNorm > 0.72) {
+            activeColor = '#fbbf24';
+            offColor = 'rgba(251, 191, 36, 0.1)';
+            glowColor = 'rgba(251, 191, 36, 0.5)';
           } else {
-            // Safe zone (Green)
-            activeColor = '#10b981';
-            offColor = 'rgba(16, 185, 129, 0.1)';
-            glowColor = 'rgba(16, 185, 129, 0.4)';
+            // Lime Green safe zone
+            activeColor = '#10f27c';
+            offColor = 'rgba(16, 242, 124, 0.08)';
+            glowColor = 'rgba(16, 242, 124, 0.5)';
           }
 
           if (isPeakLit) {
@@ -119,16 +110,14 @@ export function MeterBridge() {
         }
       };
 
-      // Draw Left and Right channels
       drawChannel(0, levels.leftRms, peakL);
-      drawChannel(chWidth + 18, levels.rightRms, peakR);
+      drawChannel(chWidth + 14, levels.rightRms, peakR);
 
-      // Channel Labels
-      ctx.font = '9px "JetBrains Mono", monospace';
-      ctx.fillStyle = '#64748b';
+      ctx.font = '8px "JetBrains Mono", monospace';
+      ctx.fillStyle = '#475569';
       ctx.textAlign = 'center';
-      ctx.fillText('L', chWidth / 2, h - 3);
-      ctx.fillText('R', chWidth + 18 + chWidth / 2, h - 3);
+      ctx.fillText('L', chWidth / 2, h - 2);
+      ctx.fillText('R', chWidth + 14 + chWidth / 2, h - 2);
 
       ctx.restore();
       animId = requestAnimationFrame(render);
@@ -141,10 +130,7 @@ export function MeterBridge() {
   return (
     <div className="meter-bridge-card">
       <div className="meter-bridge-header">
-        <div className="meter-title-wrap">
-          <span className="meter-badge">VU STEREO</span>
-          <span className="meter-title">MASTER OUT</span>
-        </div>
+        <span className="meter-title">VU STEREO</span>
         <div className={`clip-indicator ${clipAlert ? 'active' : ''}`}>
           CLIP
         </div>
@@ -153,7 +139,6 @@ export function MeterBridge() {
       <div className="meter-stage">
         <canvas ref={canvasRef} className="meter-canvas" />
 
-        {/* Center scale markings */}
         <div className="meter-scale-markers">
           {SCALE_MARKERS.map((m, idx) => (
             <div

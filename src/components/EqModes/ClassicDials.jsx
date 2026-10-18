@@ -1,5 +1,5 @@
-import React, { useRef, useState, useEffect } from 'react';
-import { RotateCcw, Volume2, Sparkles, Zap, Mic, ShieldAlert, Sliders, Waves } from 'lucide-react';
+import React, { useRef, useState } from 'react';
+import { RotateCcw, Zap, Mic, ShieldAlert, Waves } from 'lucide-react';
 import { audioEngine } from '../../audio/AudioEngine';
 
 export function ClassicDials({
@@ -52,149 +52,130 @@ export function ClassicDials({
 
   return (
     <div className="tactile-rack-view">
-      {/* Top Rack Strip */}
+      {/* Sleek Minimalist Console Header */}
       <div className="rack-faceplate-header">
-        <div className="rack-model-tag">
-          <div className="rack-screw" />
-          <div className="rack-brand">
-            <span className="rack-brand-accent">AURA</span>
-            <span className="rack-brand-model">PRO-DSP 4000</span>
-          </div>
-          <span className="rack-serial">ANALOG HYBRID CHANNEL STRIP</span>
+        <div className="rack-title-group">
+          <span className="live-dot-lime" />
+          <span className="rack-title">ANALOG CHANNEL STRIP</span>
         </div>
 
         <div className="rack-header-actions">
-          {/* Hardware Auto-Gain Switch */}
+          {/* Auto-Gain Loudness Toggle */}
           <button
-            className={`hardware-toggle-button ${autoGainActive ? 'engaged' : ''}`}
+            className={`btn-auto-gain ${autoGainActive ? 'engaged' : ''}`}
             onClick={handleAutoGainToggle}
             title="Auto-Gain Fletcher-Munson Loudness Normalizer (Prevents volume jump when boosting bass/treble)"
           >
-            <span className={`toggle-led ${autoGainActive ? 'green' : 'off'}`} />
-            <span className="toggle-label">AUTO-GAIN LOUDNESS</span>
+            <span className={`pill-led ${autoGainActive ? 'lime' : 'off'}`} />
+            <span>Auto-Gain</span>
           </button>
 
-          {/* Master 0dB Reset */}
+          {/* Zero Flat Reset */}
           <button
-            className="rack-reset-btn"
+            className="btn-zero-flat"
             onClick={resetAllToFlat}
-            title="Zero all knobs back to factory flat reference"
+            title="Reset all knobs to 0 dB flat"
           >
             <RotateCcw size={12} />
-            <span>ZERO FLAT</span>
+            <span>Zero Flat</span>
           </button>
-          <div className="rack-screw" />
         </div>
       </div>
 
-      {/* Main Rotary Console Grid */}
+      {/* 4 Rotary Dials Grid */}
       <div className="knob-rack-grid">
-        {/* Knob 1: Bass Sculptor */}
+        {/* Knob 1: Bass */}
         <StudioRotaryKnob
           id="knob-bass"
-          label="BASS SCULPTOR"
+          label="BASS"
           subtext="160 Hz Low-Shelf"
           value={bass}
           min={-6}
           max={6}
           step={0.5}
           unit="dB"
-          color="#6366f1"
-          glowColor="rgba(99, 102, 241, 0.6)"
+          color="#10f27c"
+          glowColor="rgba(16, 242, 124, 0.6)"
           onChange={onChangeBass}
         />
 
-        {/* Knob 2: Treble Detail */}
+        {/* Knob 2: Treble */}
         <StudioRotaryKnob
           id="knob-treble"
-          label="TREBLE AIR"
+          label="TREBLE"
           subtext="3.2 kHz High-Shelf"
           value={treble}
           min={-6}
           max={6}
           step={0.5}
           unit="dB"
-          color="#06b6d4"
-          glowColor="rgba(6, 182, 212, 0.6)"
+          color="#10f27c"
+          glowColor="rgba(16, 242, 124, 0.6)"
           onChange={onChangeTreble}
         />
 
-        {/* Knob 3: Analog Tube Saturation */}
+        {/* Knob 3: Warmth (Tube Saturation) */}
         <StudioRotaryKnob
           id="knob-tube"
-          label="TUBE WARMTH"
-          subtext="Triode Harmonic Color"
+          label="WARMTH"
+          subtext="Tube Saturation"
           value={Math.round(internalTube * 100)}
           min={0}
           max={100}
           step={1}
           unit="%"
-          color="#f59e0b"
-          glowColor="rgba(245, 158, 11, 0.6)"
+          color="#34d399"
+          glowColor="rgba(52, 211, 153, 0.6)"
           onChange={(val) => handleTubeChange(val / 100)}
         />
 
-        {/* Knob 4: Spatial Stereo Imager */}
+        {/* Knob 4: Width (Stereo Imager) */}
         <StudioRotaryKnob
           id="knob-width"
-          label="STEREO WIDTH"
-          subtext="Mid/Side Soundstage"
+          label="WIDTH"
+          subtext="Spatial Soundstage"
           value={Math.round(internalWidth * 100)}
           min={0}
           max={200}
           step={5}
           unit="%"
-          color="#10b981"
-          glowColor="rgba(16, 185, 129, 0.6)"
+          color="#10f27c"
+          glowColor="rgba(16, 242, 124, 0.6)"
           onChange={(val) => handleWidthChange(val / 100)}
         />
       </div>
 
-      {/* Bottom Rack Enhancement Switches Bar */}
+      {/* Bottom Minimalist Enhancement Toggles */}
       <div className="rack-enhancement-bar">
-        <div className="enhancement-title">
-          <Zap size={13} className="text-amber" />
-          <span>DSP ENHANCEMENT ENGAGEMENTS</span>
-        </div>
-
         <div className="switches-cluster">
-          {/* Dynamic Punch Exciter */}
+          {/* Sub Exciter */}
           <button
-            className={`metal-switch-tile ${dynamicBass ? 'active' : ''}`}
+            className={`pill-switch-btn ${dynamicBass ? 'active' : ''}`}
             onClick={() => onToggleDynamicBass && onToggleDynamicBass(!dynamicBass)}
           >
-            <div className="switch-top">
-              <span className={`switch-led ${dynamicBass ? 'amber' : 'off'}`} />
-              <Waves size={14} className="switch-icon" />
-            </div>
-            <div className="switch-title">SUB EXCITER</div>
-            <div className="switch-sub">+4dB @ 90Hz Punch</div>
+            <span className={`pill-led ${dynamicBass ? 'lime' : 'off'}`} />
+            <Waves size={13} className="switch-icon" />
+            <span className="switch-title">Sub Exciter (+4dB)</span>
           </button>
 
-          {/* Dialogue Clarity */}
+          {/* Vocal Air */}
           <button
-            className={`metal-switch-tile ${dialogueBoost ? 'active' : ''}`}
+            className={`pill-switch-btn ${dialogueBoost ? 'active' : ''}`}
             onClick={() => onToggleDialogueBoost && onToggleDialogueBoost(!dialogueBoost)}
           >
-            <div className="switch-top">
-              <span className={`switch-led ${dialogueBoost ? 'cyan' : 'off'}`} />
-              <Mic size={14} className="switch-icon" />
-            </div>
-            <div className="switch-title">VOCAL CLARITY</div>
-            <div className="switch-sub">+3.5dB 3kHz Presence</div>
+            <span className={`pill-led ${dialogueBoost ? 'lime' : 'off'}`} />
+            <Mic size={13} className="switch-icon" />
+            <span className="switch-title">Vocal Clarity (+3.5dB)</span>
           </button>
 
-          {/* Night Mode Compressor */}
+          {/* Night Limiter */}
           <button
-            className={`metal-switch-tile ${nightMode ? 'active' : ''}`}
+            className={`pill-switch-btn ${nightMode ? 'active' : ''}`}
             onClick={() => onToggleNightMode && onToggleNightMode(!nightMode)}
           >
-            <div className="switch-top">
-              <span className={`switch-led ${nightMode ? 'violet' : 'off'}`} />
-              <ShieldAlert size={14} className="switch-icon" />
-            </div>
-            <div className="switch-title">DYNAMICS LIMITER</div>
-            <div className="switch-sub">Night Mode Compressor</div>
+            <span className={`pill-led ${nightMode ? 'lime' : 'off'}`} />
+            <ShieldAlert size={13} className="switch-icon" />
+            <span className="switch-title">Night Limiter</span>
           </button>
         </div>
       </div>
@@ -202,7 +183,7 @@ export function ClassicDials({
   );
 }
 
-// Precision Knurled Aluminum Rotary Knob Component
+// Minimalist Knurled Aluminum Knob Component
 function StudioRotaryKnob({
   id,
   label,
@@ -221,14 +202,11 @@ function StudioRotaryKnob({
   const startY = useRef(0);
   const startVal = useRef(value);
 
-  // Normalize 0 to 1
   const norm = Math.max(0, Math.min(1, (value - min) / (max - min)));
-  // Angle: -135deg (min) to +135deg (max)
   const angle = -135 + norm * 270;
 
-  // Arc path for SVG ring
-  const radius = 54;
-  const center = 65;
+  const radius = 52;
+  const center = 60;
   const startAngleRad = ((-135 - 90) * Math.PI) / 180;
   const endAngleRad = (((-135 + norm * 270) - 90) * Math.PI) / 180;
 
@@ -256,7 +234,6 @@ function StudioRotaryKnob({
     const change = (deltaY / 130) * range;
     let newVal = startVal.current + change;
 
-    // Snap to step
     newVal = Math.round(newVal / step) * step;
     newVal = Math.max(min, Math.min(max, newVal));
     onChange(newVal);
@@ -280,58 +257,51 @@ function StudioRotaryKnob({
         ref={knobRef}
         className="knob-body-wrap"
         onPointerDown={handlePointerDown}
-        title="Click & drag up/down to adjust with precision"
+        title="Drag up/down to adjust"
       >
-        <svg className="knob-ring-svg" viewBox="0 0 130 130">
-          {/* Background track */}
+        <svg className="knob-ring-svg" viewBox="0 0 120 120">
           <circle
-            cx="65"
-            cy="65"
+            cx="60"
+            cy="60"
             r={radius}
             fill="none"
-            stroke="rgba(255, 255, 255, 0.08)"
-            strokeWidth="5"
-            strokeDasharray="180 75"
-            strokeDashoffset="-32"
+            stroke="rgba(255, 255, 255, 0.06)"
+            strokeWidth="4"
+            strokeDasharray="165 75"
+            strokeDashoffset="-30"
             strokeLinecap="round"
           />
 
-          {/* Active glow arc */}
           {arcPath && (
             <path
               d={arcPath}
               fill="none"
               stroke={color}
-              strokeWidth="5"
+              strokeWidth="4"
               strokeLinecap="round"
-              style={{ filter: `drop-shadow(0 0 6px ${glowColor})` }}
+              style={{ filter: `drop-shadow(0 0 5px ${glowColor})` }}
             />
           )}
 
-          {/* Top detent tick */}
           <line
-            x1="65"
-            y1="5"
-            x2="65"
-            y2="11"
-            stroke="rgba(255, 255, 255, 0.4)"
-            strokeWidth="2"
+            x1="60"
+            y1="4"
+            x2="60"
+            y2="9"
+            stroke="rgba(255, 255, 255, 0.3)"
+            strokeWidth="1.5"
           />
         </svg>
 
-        {/* Tactile Knurled Metal Knob Disc */}
         <div
           className="knob-rotor-disc"
           style={{ transform: `rotate(${angle}deg)` }}
         >
-          {/* Brushed texture ring */}
-          <div className="knob-knurling-edge" />
           <div className="knob-notch-pointer" style={{ background: color, boxShadow: `0 0 6px ${color}` }} />
           <div className="knob-cap-center" />
         </div>
       </div>
 
-      {/* Numeric Display Pod */}
       <div className="knob-digital-readout">
         <span className="readout-num" style={{ color }}>
           {value > 0 ? `+${value}` : value}

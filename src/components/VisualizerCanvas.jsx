@@ -1,8 +1,7 @@
 import React, { useRef, useEffect, useState, useCallback } from 'react';
 import { audioEngine } from '../audio/AudioEngine';
-import { Palette, Crosshair, Sparkles } from 'lucide-react';
 
-const NUM_CURVE_POINTS = 180;
+const NUM_CURVE_POINTS = 160;
 const TEST_FREQUENCIES = new Float32Array(NUM_CURVE_POINTS);
 const MIN_FREQ = 20;
 const MAX_FREQ = 20000;
@@ -16,70 +15,57 @@ const FREQ_TICKS = [30, 60, 125, 250, 500, 1000, 2000, 4000, 8000, 16000];
 const DB_TICKS = [12, 6, 0, -6, -12];
 
 export const VISUALIZER_THEMES = {
+  lime: {
+    id: 'lime',
+    name: 'Lime Green',
+    curveStroke: '#10f27c',
+    curveGlow: 'rgba(16, 242, 124, 0.7)',
+    curveFillTop: 'rgba(16, 242, 124, 0.18)',
+    curveFillBottom: 'rgba(16, 242, 124, 0.0)',
+    barTop: 'rgba(16, 242, 124, 0.9)',
+    barBottom: 'rgba(5, 150, 105, 0.12)',
+    peakCap: '#ffffff',
+    nodeBass: '#10f27c',
+    nodeTreble: '#34d399',
+  },
   cyber: {
     id: 'cyber',
-    name: 'Cyber Neon',
-    curveStroke: '#818cf8',
-    curveGlow: 'rgba(99, 102, 241, 0.85)',
-    curveFillTop: 'rgba(99, 102, 241, 0.22)',
-    curveFillBottom: 'rgba(99, 102, 241, 0.0)',
+    name: 'Cyber Cyan',
+    curveStroke: '#06b6d4',
+    curveGlow: 'rgba(6, 182, 212, 0.7)',
+    curveFillTop: 'rgba(6, 182, 212, 0.18)',
+    curveFillBottom: 'rgba(6, 182, 212, 0.0)',
     barTop: 'rgba(6, 182, 212, 0.85)',
-    barBottom: 'rgba(99, 102, 241, 0.1)',
-    peakCap: '#a5b4fc',
-    nodeBass: '#6366f1',
-    nodeTreble: '#06b6d4',
+    barBottom: 'rgba(8, 145, 178, 0.1)',
+    peakCap: '#ffffff',
+    nodeBass: '#06b6d4',
+    nodeTreble: '#38bdf8',
   },
   amber: {
     id: 'amber',
-    name: 'Vintage Neve Tube',
+    name: 'Warm Gold',
     curveStroke: '#fbbf24',
-    curveGlow: 'rgba(251, 191, 36, 0.85)',
-    curveFillTop: 'rgba(245, 158, 11, 0.25)',
+    curveGlow: 'rgba(251, 191, 36, 0.7)',
+    curveFillTop: 'rgba(245, 158, 11, 0.18)',
     curveFillBottom: 'rgba(245, 158, 11, 0.0)',
     barTop: 'rgba(245, 158, 11, 0.85)',
-    barBottom: 'rgba(180, 83, 9, 0.12)',
-    peakCap: '#fde68a',
+    barBottom: 'rgba(180, 83, 9, 0.1)',
+    peakCap: '#ffffff',
     nodeBass: '#f59e0b',
     nodeTreble: '#fbbf24',
   },
-  emerald: {
-    id: 'emerald',
-    name: 'SSL Phosphor Green',
-    curveStroke: '#34d399',
-    curveGlow: 'rgba(52, 211, 153, 0.85)',
-    curveFillTop: 'rgba(16, 185, 129, 0.22)',
-    curveFillBottom: 'rgba(16, 185, 129, 0.0)',
-    barTop: 'rgba(16, 185, 129, 0.85)',
-    barBottom: 'rgba(5, 150, 105, 0.12)',
-    peakCap: '#a7f3d0',
-    nodeBass: '#10b981',
-    nodeTreble: '#34d399',
-  },
-  ice: {
-    id: 'ice',
-    name: 'Glacial Arctic',
-    curveStroke: '#38bdf8',
-    curveGlow: 'rgba(56, 189, 248, 0.85)',
-    curveFillTop: 'rgba(56, 189, 248, 0.22)',
-    curveFillBottom: 'rgba(56, 189, 248, 0.0)',
-    barTop: 'rgba(224, 242, 254, 0.85)',
-    barBottom: 'rgba(14, 165, 233, 0.12)',
+  mono: {
+    id: 'mono',
+    name: 'Pure White',
+    curveStroke: '#f8fafc',
+    curveGlow: 'rgba(255, 255, 255, 0.6)',
+    curveFillTop: 'rgba(255, 255, 255, 0.12)',
+    curveFillBottom: 'rgba(255, 255, 255, 0.0)',
+    barTop: 'rgba(241, 245, 249, 0.85)',
+    barBottom: 'rgba(148, 163, 184, 0.08)',
     peakCap: '#ffffff',
-    nodeBass: '#0ea5e9',
-    nodeTreble: '#38bdf8',
-  },
-  crimson: {
-    id: 'crimson',
-    name: 'Infrared Sunset',
-    curveStroke: '#f43f5e',
-    curveGlow: 'rgba(244, 63, 94, 0.85)',
-    curveFillTop: 'rgba(244, 63, 94, 0.22)',
-    curveFillBottom: 'rgba(244, 63, 94, 0.0)',
-    barTop: 'rgba(244, 63, 94, 0.85)',
-    barBottom: 'rgba(159, 18, 57, 0.12)',
-    peakCap: '#fecdd3',
-    nodeBass: '#e11d48',
-    nodeTreble: '#f43f5e',
+    nodeBass: '#f8fafc',
+    nodeTreble: '#cbd5e1',
   },
 };
 
@@ -89,7 +75,7 @@ export function VisualizerCanvas({
   treble = 0,
   onChangeBass,
   onChangeTreble,
-  activeTheme = 'cyber',
+  activeTheme = 'lime',
   onThemeChange,
 }) {
   const canvasRef = useRef(null);
@@ -100,9 +86,8 @@ export function VisualizerCanvas({
   const [activeDragNode, setActiveDragNode] = useState(null);
   const [hudInfo, setHudInfo] = useState(null);
 
-  const themeColors = VISUALIZER_THEMES[theme] || VISUALIZER_THEMES.cyber;
+  const themeColors = VISUALIZER_THEMES[theme] || VISUALIZER_THEMES.lime;
 
-  // Node frequency anchors
   const BASS_FREQ = 160;
   const TREBLE_FREQ = 3200;
 
@@ -110,13 +95,6 @@ export function VisualizerCanvas({
     const logMin = Math.log10(MIN_FREQ);
     const logMax = Math.log10(MAX_FREQ);
     return ((Math.log10(f) - logMin) / (logMax - logMin)) * width;
-  }, []);
-
-  const xToFreq = useCallback((x, width) => {
-    const logMin = Math.log10(MIN_FREQ);
-    const logMax = Math.log10(MAX_FREQ);
-    const norm = Math.max(0, Math.min(1, x / width));
-    return Math.pow(10, logMin + norm * (logMax - logMin));
   }, []);
 
   const dbToY = useCallback((db, height) => {
@@ -134,7 +112,6 @@ export function VisualizerCanvas({
     return minDb + normalized * (maxDb - minDb);
   }, []);
 
-  // Handle pointer down on interactive nodes
   const handlePointerDown = (e) => {
     const canvas = canvasRef.current;
     if (!canvas) return;
@@ -148,13 +125,10 @@ export function VisualizerCanvas({
     const trebleX = freqToX(TREBLE_FREQ, rect.width);
     const trebleY = dbToY(treble, rect.height);
 
-    const distBass = Math.hypot(clickX - bassX, clickY - bassY);
-    const distTreble = Math.hypot(clickX - trebleX, clickY - trebleY);
-
-    if (distBass < 24) {
+    if (Math.hypot(clickX - bassX, clickY - bassY) < 26) {
       setActiveDragNode('bass');
       e.target.setPointerCapture?.(e.pointerId);
-    } else if (distTreble < 24) {
+    } else if (Math.hypot(clickX - trebleX, clickY - trebleY) < 26) {
       setActiveDragNode('treble');
       e.target.setPointerCapture?.(e.pointerId);
     }
@@ -174,7 +148,7 @@ export function VisualizerCanvas({
       if (activeDragNode === 'bass' && onChangeBass) {
         onChangeBass(clampedDb);
         setHudInfo({
-          name: 'BASS SHELF',
+          name: 'BASS',
           freq: '160 Hz',
           gain: `${clampedDb >= 0 ? '+' : ''}${clampedDb.toFixed(1)} dB`,
           x: freqToX(BASS_FREQ, rect.width),
@@ -183,7 +157,7 @@ export function VisualizerCanvas({
       } else if (activeDragNode === 'treble' && onChangeTreble) {
         onChangeTreble(clampedDb);
         setHudInfo({
-          name: 'TREBLE SHELF',
+          name: 'TREBLE',
           freq: '3.2 kHz',
           gain: `${clampedDb >= 0 ? '+' : ''}${clampedDb.toFixed(1)} dB`,
           x: freqToX(TREBLE_FREQ, rect.width),
@@ -193,28 +167,24 @@ export function VisualizerCanvas({
       return;
     }
 
-    // Hover detection
     const bassX = freqToX(BASS_FREQ, rect.width);
     const bassY = dbToY(bass, rect.height);
     const trebleX = freqToX(TREBLE_FREQ, rect.width);
     const trebleY = dbToY(treble, rect.height);
 
-    const distBass = Math.hypot(currX - bassX, currY - bassY);
-    const distTreble = Math.hypot(currX - trebleX, currY - trebleY);
-
-    if (distBass < 20) {
+    if (Math.hypot(currX - bassX, currY - bassY) < 20) {
       setHoveredNode('bass');
       setHudInfo({
-        name: 'BASS SHELF',
+        name: 'BASS',
         freq: '160 Hz',
         gain: `${bass >= 0 ? '+' : ''}${bass.toFixed(1)} dB`,
         x: bassX,
         y: bassY,
       });
-    } else if (distTreble < 20) {
+    } else if (Math.hypot(currX - trebleX, currY - trebleY) < 20) {
       setHoveredNode('treble');
       setHudInfo({
-        name: 'TREBLE SHELF',
+        name: 'TREBLE',
         freq: '3.2 kHz',
         gain: `${treble >= 0 ? '+' : ''}${treble.toFixed(1)} dB`,
         x: trebleX,
@@ -260,13 +230,13 @@ export function VisualizerCanvas({
       ctx.save();
       ctx.scale(dpr, dpr);
 
-      // 1. Studio Rack Background
-      ctx.fillStyle = '#06080d';
+      // 1. OLED Pure Black Background
+      ctx.fillStyle = '#020304';
       ctx.fillRect(0, 0, width, height);
 
-      // Subtle hardware grid backing
-      ctx.fillStyle = 'rgba(255, 255, 255, 0.012)';
-      for (let x = 0; x < width; x += 16) {
+      // Subtle grid
+      ctx.fillStyle = 'rgba(255, 255, 255, 0.015)';
+      for (let x = 0; x < width; x += 20) {
         ctx.fillRect(x, 0, 1, height);
       }
 
@@ -274,8 +244,8 @@ export function VisualizerCanvas({
       DB_TICKS.forEach((db) => {
         const y = dbToY(db, height);
         ctx.beginPath();
-        ctx.strokeStyle = db === 0 ? 'rgba(255, 255, 255, 0.22)' : 'rgba(255, 255, 255, 0.06)';
-        ctx.lineWidth = db === 0 ? 1.5 : 1;
+        ctx.strokeStyle = db === 0 ? 'rgba(255, 255, 255, 0.16)' : 'rgba(255, 255, 255, 0.04)';
+        ctx.lineWidth = db === 0 ? 1.2 : 1;
         if (db !== 0) ctx.setLineDash([3, 4]);
         else ctx.setLineDash([]);
         ctx.moveTo(0, y);
@@ -283,17 +253,16 @@ export function VisualizerCanvas({
         ctx.stroke();
         ctx.setLineDash([]);
 
-        // Label
-        ctx.fillStyle = db === 0 ? '#cbd5e1' : '#475569';
-        ctx.font = '10px "JetBrains Mono", monospace';
+        ctx.fillStyle = db === 0 ? '#94a3b8' : '#334155';
+        ctx.font = '9px "JetBrains Mono", monospace';
         ctx.fillText(`${db > 0 ? '+' : ''}${db}dB`, 8, y - 3);
       });
 
-      // 3. Frequency Tick Lines
+      // 3. Frequency Reference Lines & Ticks (drawn above bottom bar to prevent overlap!)
       FREQ_TICKS.forEach((f) => {
         const x = freqToX(f, width);
         ctx.beginPath();
-        ctx.strokeStyle = 'rgba(255, 255, 255, 0.05)';
+        ctx.strokeStyle = 'rgba(255, 255, 255, 0.03)';
         ctx.lineWidth = 1;
         ctx.setLineDash([2, 4]);
         ctx.moveTo(x, 0);
@@ -301,15 +270,15 @@ export function VisualizerCanvas({
         ctx.stroke();
         ctx.setLineDash([]);
 
-        ctx.fillStyle = '#475569';
-        ctx.font = '9px "JetBrains Mono", monospace';
+        ctx.fillStyle = '#3f4e62';
+        ctx.font = '8px "JetBrains Mono", monospace';
         const label = f >= 1000 ? `${f / 1000}k` : `${f}`;
-        ctx.fillText(label, x + 3, height - 26);
+        ctx.fillText(label, x + 3, height - 28);
       });
 
       // 4. Real-Time Spectrum Analyzer Bars
       audioEngine.getSpectrumData(fftBuffer);
-      const numBars = 60;
+      const numBars = 56;
       const barSpacing = width / numBars;
       const barWidth = Math.max(2.5, barSpacing - 2);
 
@@ -317,18 +286,17 @@ export function VisualizerCanvas({
         const binIndex = Math.floor(Math.pow(i / numBars, 1.55) * (fftBuffer.length - 1));
         const val = fftBuffer[binIndex] || 0;
         const normalizedVal = val / 255;
-        const barHeight = normalizedVal * (height * 0.72);
+        const barHeight = normalizedVal * (height * 0.7);
 
         if (barHeight > peakHold[i]) {
           peakHold[i] = barHeight;
         } else {
-          peakHold[i] = Math.max(0, peakHold[i] - 0.65);
+          peakHold[i] = Math.max(0, peakHold[i] - 0.7);
         }
 
         const x = i * barSpacing + 2;
         const y = height - barHeight;
 
-        // Theme-reactive bar gradient
         const barGrad = ctx.createLinearGradient(0, y, 0, height);
         barGrad.addColorStop(0, themeColors.barTop);
         barGrad.addColorStop(1, themeColors.barBottom);
@@ -336,7 +304,6 @@ export function VisualizerCanvas({
         ctx.fillStyle = barGrad;
         ctx.fillRect(x, y, barWidth, barHeight);
 
-        // Peak needle
         if (peakHold[i] > 2) {
           ctx.fillStyle = themeColors.peakCap;
           ctx.fillRect(x, height - peakHold[i] - 2, barWidth, 1.5);
@@ -354,15 +321,13 @@ export function VisualizerCanvas({
         else ctx.lineTo(x, y);
       }
 
-      // Glowing stroke
       ctx.shadowColor = themeColors.curveGlow;
-      ctx.shadowBlur = 14;
+      ctx.shadowBlur = 12;
       ctx.strokeStyle = themeColors.curveStroke;
-      ctx.lineWidth = 2.8;
+      ctx.lineWidth = 2.4;
       ctx.stroke();
       ctx.shadowBlur = 0;
 
-      // Fill under curve
       ctx.lineTo(width, dbToY(0, height));
       ctx.lineTo(0, dbToY(0, height));
       ctx.closePath();
@@ -373,41 +338,37 @@ export function VisualizerCanvas({
       ctx.fillStyle = curveFillGrad;
       ctx.fill();
 
-      // 6. Draw Interactive Draggable EQ Nodes
+      // 6. Interactive Draggable Nodes
       const drawNode = (freq, gainDb, label, nodeColor, isHovered, isDragging) => {
         const nx = freqToX(freq, width);
         const ny = dbToY(gainDb, height);
 
-        // Outer pulsing target ring when hovered or active
         if (isHovered || isDragging) {
           ctx.beginPath();
-          ctx.arc(nx, ny, 16, 0, Math.PI * 2);
+          ctx.arc(nx, ny, 14, 0, Math.PI * 2);
           ctx.strokeStyle = nodeColor;
-          ctx.lineWidth = 1.5;
-          ctx.setLineDash([3, 3]);
+          ctx.lineWidth = 1.2;
+          ctx.setLineDash([2, 3]);
           ctx.stroke();
           ctx.setLineDash([]);
         }
 
-        // Drop shadow & Halo
         ctx.shadowColor = nodeColor;
-        ctx.shadowBlur = isDragging ? 16 : isHovered ? 12 : 6;
+        ctx.shadowBlur = isDragging ? 14 : isHovered ? 10 : 5;
 
-        // Solid node core
         ctx.beginPath();
-        ctx.arc(nx, ny, isDragging ? 7.5 : isHovered ? 6.5 : 5, 0, Math.PI * 2);
-        ctx.fillStyle = '#ffffff';
+        ctx.arc(nx, ny, isDragging ? 6.5 : isHovered ? 5.5 : 4.5, 0, Math.PI * 2);
+        ctx.fillStyle = '#020304';
         ctx.fill();
-        ctx.lineWidth = 2.5;
+        ctx.lineWidth = 2.2;
         ctx.strokeStyle = nodeColor;
         ctx.stroke();
         ctx.shadowBlur = 0;
 
-        // Label flag above node
-        ctx.font = '10px "JetBrains Mono", monospace';
-        ctx.fillStyle = '#cbd5e1';
-        const txt = `${label}: ${gainDb >= 0 ? '+' : ''}${gainDb.toFixed(1)}dB`;
-        ctx.fillText(txt, nx - 20, ny - 12);
+        ctx.font = '9px "JetBrains Mono", monospace';
+        ctx.fillStyle = nodeColor;
+        const txt = `${label} ${gainDb >= 0 ? '+' : ''}${gainDb.toFixed(1)}dB`;
+        ctx.fillText(txt, nx - 16, ny - 10);
       };
 
       drawNode(
@@ -440,24 +401,23 @@ export function VisualizerCanvas({
 
   return (
     <div className="visualizer-wrapper" ref={containerRef}>
-      {/* Top Header / Theme Switcher Bar */}
+      {/* Top Header / Theme Dots */}
       <div className="visualizer-top-bar">
         <div className="visualizer-status-badge">
-          <Crosshair size={13} className="text-cyan animate-pulse" />
-          <span>PARAMETRIC H(s) TRANSFER CURVE • DRAGGABLE NODES</span>
+          <span className="live-dot-lime" />
+          <span>REALTIME H(s) SPECTRUM</span>
         </div>
 
         <div className="visualizer-theme-pills">
-          <Palette size={13} style={{ color: '#94a3b8', marginRight: '4px' }} />
           {Object.entries(VISUALIZER_THEMES).map(([k, t]) => (
             <button
               key={k}
-              className={`theme-pill ${theme === k ? 'active' : ''}`}
+              className={`theme-dot-btn ${theme === k ? 'active' : ''}`}
               onClick={() => selectTheme(k)}
               title={t.name}
             >
-              <span className="theme-pill-dot" style={{ background: t.curveStroke }} />
-              <span className="theme-pill-label">{t.name.split(' ')[0]}</span>
+              <span className="theme-dot" style={{ background: t.curveStroke }} />
+              <span className="theme-name">{t.name.split(' ')[0]}</span>
             </button>
           ))}
         </div>
@@ -472,42 +432,32 @@ export function VisualizerCanvas({
         onPointerUp={handlePointerUp}
       />
 
-      {/* Realtime Floating HUD Tooltip */}
+      {/* Floating HUD Tooltip */}
       {hudInfo && (
         <div
           className="visualizer-hud-tooltip"
           style={{
             left: `${hudInfo.x}px`,
-            top: `${Math.max(25, hudInfo.y - 45)}px`,
+            top: `${Math.max(20, hudInfo.y - 40)}px`,
           }}
         >
-          <div className="hud-line-1">{hudInfo.name}</div>
-          <div className="hud-line-2">
-            <span>{hudInfo.freq}</span>
-            <span className="hud-gain">{hudInfo.gain}</span>
-          </div>
+          <div className="hud-gain">{hudInfo.name} {hudInfo.gain}</div>
+          <div className="hud-freq">{hudInfo.freq}</div>
         </div>
       )}
 
-      {/* Footer Info / Legend */}
+      {/* Minimalist Legend Footer Bar (no overlaps!) */}
       <div className="visualizer-overlay-info">
         <div className="legend-item">
-          <div
-            className="legend-color legend-curve"
-            style={{ background: themeColors.curveStroke, boxShadow: `0 0 8px ${themeColors.curveStroke}` }}
-          />
-          <span>Parametric Biquad Curve (dB)</span>
+          <div className="legend-color" style={{ background: themeColors.curveStroke }} />
+          <span>Biquad Curve</span>
         </div>
         <div className="legend-item">
-          <div
-            className="legend-color legend-spectrum"
-            style={{ background: themeColors.barTop }}
-          />
-          <span>Real-time Audio FFT (1024)</span>
+          <div className="legend-color" style={{ background: themeColors.barTop }} />
+          <span>Live FFT</span>
         </div>
         <div className="legend-hint">
-          <Sparkles size={11} style={{ marginRight: '4px' }} />
-          <span>Drag BASS & TREBLE nodes directly on curve</span>
+          <span>Drag nodes on curve to sculpt</span>
         </div>
       </div>
     </div>
