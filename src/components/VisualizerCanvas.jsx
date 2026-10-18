@@ -365,10 +365,13 @@ export function VisualizerCanvas({
         ctx.stroke();
         ctx.shadowBlur = 0;
 
-        ctx.font = '9px "JetBrains Mono", monospace';
+        ctx.font = '700 9px "JetBrains Mono", monospace';
         ctx.fillStyle = nodeColor;
+        ctx.textAlign = 'center';
         const txt = `${label} ${gainDb >= 0 ? '+' : ''}${gainDb.toFixed(1)}dB`;
-        ctx.fillText(txt, nx - 16, ny - 10);
+        const textY = ny < 28 ? ny + 16 : ny - 10;
+        ctx.fillText(txt, nx, textY);
+        ctx.textAlign = 'start';
       };
 
       drawNode(

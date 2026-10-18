@@ -196,6 +196,7 @@ function StudioRotaryKnob({
   color,
   glowColor,
   onChange,
+  isBipolar = min < 0 && max > 0,
 }) {
   const knobRef = useRef(null);
   const isDragging = useRef(false);
@@ -205,18 +206,35 @@ function StudioRotaryKnob({
   const norm = Math.max(0, Math.min(1, (value - min) / (max - min)));
   const angle = -135 + norm * 270;
 
-  const radius = 52;
-  const center = 60;
-  const startAngleRad = ((-135 - 90) * Math.PI) / 180;
-  const endAngleRad = (((-135 + norm * 270) - 90) * Math.PI) / 180;
+  const radius = 46;
+  const circumference = 2 * Math.PI * radius; // 289.027
+  const arcLength270 = 0.75 * circumference; // 216.77
+  const halfArc = arcLength270 / 2; // 108.385 (135 degrees)
 
-  const x1 = center + radius * Math.cos(startAngleRad);
-  const y1 = center + radius * Math.sin(startAngleRad);
-  const x2 = center + radius * Math.cos(endAngleRad);
-  const y2 = center + radius * Math.sin(endAngleRad);
+  // Bipolar Arc Calculations
+  let arcDasharray = '0 1000';
+  let arcTransform = 'rotate(135 60 60)';
 
-  const largeArcFlag = norm > 0.5 ? 1 : 0;
-  const arcPath = norm <= 0.005 ? '' : `M ${x1} ${y1} A ${radius} ${radius} 0 ${largeArcFlag} 1 ${x2} ${y2}`;
+  if (isBipolar) {
+    if (value > 0) {
+      const posNorm = Math.min(1, value / max);
+      const posLen = Math.max(0.1, posNorm * halfArc);
+      arcDasharray = `${posLen} ${circumference}`;
+      arcTransform = 'rotate(-90 60 60)'; // Start at 12 o'clock and sweep clockwise
+    } else if (value < 0) {
+      const negNorm = Math.min(1, Math.abs(value) / Math.abs(min));
+      const negLen = Math.max(0.1, negNorm * halfArc);
+      const negAngle = negNorm * 135;
+      arcDasharray = `${negLen} ${circumference}`;
+      arcTransform = `rotate(${-90 - negAngle} 60 60)`; // Start to the left and sweep up to 12 o'clock
+    }
+  } else {
+    if (norm > 0.005) {
+      const activeLength = Math.max(0.1, norm * arcLength270);
+      arcDasharray = `${activeLength} ${circumference}`;
+      arcTransform = 'rotate(135 60 60)';
+    }
+  }
 
   const handlePointerDown = (e) => {
     isDragging.current = true;
@@ -231,7 +249,7 @@ function StudioRotaryKnob({
     if (!isDragging.current) return;
     const deltaY = startY.current - e.clientY;
     const range = max - min;
-    const change = (deltaY / 130) * range;
+    const change = (deltaY / 140) * range;
     let newVal = startVal.current + change;
 
     newVal = Math.round(newVal / step) * step;
@@ -257,39 +275,76 @@ function StudioRotaryKnob({
         ref={knobRef}
         className="knob-body-wrap"
         onPointerDown={handlePointerDown}
-        title="Drag up/down to adjust"
+        title="Drag up/down to adjust value"
       >
         <svg className="knob-ring-svg" viewBox="0 0 120 120">
+          {/* Bezel Scale Ticks (-135°, -67.5°, 0°, +67.5°, +135°) */}
+          {[
+            { a: -135, major: true },
+            { a: -67.5, major: false },
+            { a: 0, major: true, center: true },
+            { a: 67.5, major: false },
+            { a: 135, major: true },
+          ].map(({ a, major, center }) => {
+            const rad = (a * Math.PI) / 180;
+            const r1 = radius + 4;
+            const r2 = radius + (major ? 8 : 6);
+            const x1 = 60 + r1 * Math.sin(rad);
+            const y1 = 60 - r1 * Math.cos(rad);
+            const x2 = 60 + r2 * Math.sin(rad);
+            const y2 = 60 - r2 * Math.cos(rad);
+            return (
+              <line
+                key={a}
+                x1={x1}
+                y1={y1}
+                x2={x2}
+                y2={y2}
+                stroke={center ? 'rgba(16, 242, 124, 0.7)' : 'rgba(255, 255, 255, 0.18)'}
+                strokeWidth={center ? 1.8 : major ? 1.2 : 0.8}
+                strokeLinecap="round"
+              />
+            );
+          })}
+
+          {/* Background track circle */}
           <circle
             cx="60"
             cy="60"
             r={radius}
             fill="none"
-            stroke="rgba(255, 255, 255, 0.06)"
-            strokeWidth="4"
-            strokeDasharray="165 75"
-            strokeDashoffset="-30"
+            stroke="rgba(255, 255, 255, 0.08)"
+            strokeWidth="3.5"
+            strokeDasharray={`${arcLength270} ${circumference}`}
+            transform="rotate(135 60 60)"
             strokeLinecap="round"
           />
 
-          {arcPath && (
-            <path
-              d={arcPath}
+          {/* Active glow arc */}
+          {((isBipolar && value !== 0) || (!isBipolar && norm > 0.005)) && (
+            <circle
+              cx="60"
+              cy="60"
+              r={radius}
               fill="none"
               stroke={color}
-              strokeWidth="4"
+              strokeWidth="3.5"
+              strokeDasharray={arcDasharray}
+              transform={arcTransform}
               strokeLinecap="round"
               style={{ filter: `drop-shadow(0 0 5px ${glowColor})` }}
             />
           )}
 
+          {/* 12 o'clock detent center tick */}
           <line
             x1="60"
-            y1="4"
+            y1={60 - radius - 2}
             x2="60"
-            y2="9"
-            stroke="rgba(255, 255, 255, 0.3)"
-            strokeWidth="1.5"
+            y2={60 - radius + 5}
+            stroke={value === 0 && isBipolar ? 'var(--color-lime)' : 'rgba(255, 255, 255, 0.35)'}
+            strokeWidth={value === 0 && isBipolar ? '2' : '1.2'}
+            strokeLinecap="round"
           />
         </svg>
 

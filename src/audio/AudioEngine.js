@@ -704,6 +704,17 @@ export class AudioEngine {
     }
   }
 
+  setLiveSpeakerStreaming(isStreaming) {
+    this.isStreamingToSpeaker = !!isStreaming;
+    if (!isStreaming) {
+      if (this.localMonitorGainNode && this.ctx && this.isHeadsetMuted) {
+        this.localMonitorGainNode.gain.setValueAtTime(1, this.ctx.currentTime);
+        this.isHeadsetMuted = false;
+      }
+    }
+    this.notifyStateChange();
+  }
+
   // Play official Google Cast chime sound in browser
   playLocalConnectChime() {
     if (!this.ctx) this.init();

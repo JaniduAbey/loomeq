@@ -380,20 +380,11 @@ export function App() {
 
           {/* Mode View: Studio Graphic 10-Band */}
           {activeTab === 'graphic' && (
-            <div className="studio-card">
-              <div className="card-header">
-                <div className="card-title-group">
-                  <SlidersHorizontal size={18} className="card-title-icon" />
-                  <h2 className="card-title">10-Band Precision Graphic Equalizer</h2>
-                </div>
-                <span className="card-hint">Pro Biquad Peaking Filters (31 Hz – 16 kHz)</span>
-              </div>
-              <StudioGraphic
-                bands10={bands10}
-                onChangeBand={handleBandChange}
-                onResetAll={handleResetBands}
-              />
-            </div>
+            <StudioGraphic
+              bands10={bands10}
+              onChangeBand={handleBandChange}
+              onResetAll={handleResetBands}
+            />
           )}
 
           {/* Mode View: Room Acoustic & Enhancements */}

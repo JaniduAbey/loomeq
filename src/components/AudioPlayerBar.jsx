@@ -152,15 +152,21 @@ export function AudioPlayerBar({
           <span>Capture Tab</span>
         </button>
 
-        {/* Stream to Physical Speaker Button */}
+        {/* Stream to Physical Speaker Button (Click to Stream, Click again to Disconnect) */}
         <button
           className={`btn-player-action ${isSpeakerStreaming ? 'streaming-active' : ''}`}
-          onClick={isSpeakerStreaming ? onStopCast : onCastToSpeaker}
+          onClick={async () => {
+            if (isSpeakerStreaming) {
+              await onStopCast();
+            } else {
+              await onCastToSpeaker();
+            }
+          }}
           disabled={!isDeviceConnected}
-          title={isSpeakerStreaming ? 'Stop streaming to Google Home' : 'Stream DSP audio to Google Home'}
+          title={isSpeakerStreaming ? 'Click to Disconnect / Stop streaming to speaker' : 'Stream DSP audio to Google Home'}
         >
-          <Cast size={13} />
-          <span>{isSpeakerStreaming ? 'Streaming...' : 'Stream to Speaker'}</span>
+          <Cast size={13} className={isSpeakerStreaming ? 'animate-pulse' : ''} />
+          <span>{isSpeakerStreaming ? 'Disconnect Stream' : 'Stream to Speaker'}</span>
         </button>
 
         {/* Headset Monitor Mute Toggle */}

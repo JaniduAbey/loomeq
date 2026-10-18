@@ -257,16 +257,15 @@ export function DeviceModal({ isOpen, onClose, activeDevice, onSelectDevice }) {
                             padding: '4px 10px',
                             fontSize: '0.72rem',
                             borderRadius: '6px',
-                            background: 'rgba(99, 102, 241, 0.15)',
-                            borderColor: 'rgba(99, 102, 241, 0.4)',
-                            color: '#a5b4fc',
+                            gap: '5px',
                           }}
                           onClick={() => {
                             deviceService.playSpeakerChime(dev);
                           }}
                           title="Sound connection chime on this speaker"
                         >
-                          🔔 Play Chime
+                          <Bell size={12} />
+                          <span>Play Chime</span>
                         </button>
 
                         <button
@@ -275,9 +274,7 @@ export function DeviceModal({ isOpen, onClose, activeDevice, onSelectDevice }) {
                             padding: '4px 10px',
                             fontSize: '0.72rem',
                             borderRadius: '6px',
-                            background: 'rgba(6, 182, 212, 0.15)',
-                            borderColor: 'rgba(6, 182, 212, 0.4)',
-                            color: '#67e8f9',
+                            gap: '5px',
                           }}
                           onClick={() => {
                             deviceService.castMediaToSpeaker(dev, 'https://www.soundhelix.com/examples/mp3/SoundHelix-Song-1.mp3', {
@@ -287,7 +284,8 @@ export function DeviceModal({ isOpen, onClose, activeDevice, onSelectDevice }) {
                           }}
                           title="Stream test audio to this speaker"
                         >
-                          📡 Stream Test
+                          <Cast size={12} />
+                          <span>Stream Test</span>
                         </button>
 
                         <button
@@ -296,16 +294,16 @@ export function DeviceModal({ isOpen, onClose, activeDevice, onSelectDevice }) {
                             padding: '4px 10px',
                             fontSize: '0.72rem',
                             borderRadius: '6px',
-                            background: 'rgba(239, 68, 68, 0.15)',
-                            borderColor: 'rgba(239, 68, 68, 0.4)',
-                            color: '#fca5a5',
+                            color: '#f87171',
+                            gap: '5px',
                           }}
                           onClick={() => {
                             deviceService.disconnectSpeaker(dev);
                           }}
-                          title="Disconnect and stop speaker playback"
+                          title="Disconnect from Google Home speaker"
                         >
-                          ⏹ Disconnect
+                          <X size={12} />
+                          <span>Disconnect</span>
                         </button>
                       </div>
                     </div>

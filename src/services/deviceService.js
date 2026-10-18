@@ -68,7 +68,7 @@ class DeviceService {
   // Real Network Scan: Calls backend mDNS & Subnet probe
   async scanNetwork() {
     this.isScanning = true;
-    this.log('🔍 Broadcasting mDNS query (_googlecast._tcp.local) & probing port 8008 across subnets...');
+    this.log('[SCAN] Broadcasting mDNS query (_googlecast._tcp.local) & probing port 8008 across subnets...');
     this.notify();
 
     try {
@@ -83,12 +83,12 @@ class DeviceService {
           if (!this.activeDeviceId || !this.devices.some((d) => d.id === this.activeDeviceId)) {
             this.activeDeviceId = discovered[0].id;
           }
-          this.log(`✅ Real scan complete: Found ${discovered.length} active speaker(s) on your Wi-Fi!`);
+          this.log(`[OK] Scan complete: Found ${discovered.length} speaker(s) on Wi-Fi.`);
           discovered.forEach((d) => {
             this.log(`   • ${d.name} (${d.model}) @ ${d.ip} [${d.discoverySource}]`);
           });
         } else {
-          this.log('⚠️ No Cast devices found on local subnet. Make sure your speaker is powered on and on the same Wi-Fi.');
+          this.log('[WARN] No Cast devices found on local subnet. Make sure your speaker is powered on and on the same Wi-Fi.');
         }
 
         this.notify();
@@ -96,7 +96,7 @@ class DeviceService {
       }
     } catch (err) {
       this.isScanning = false;
-      this.log(`❌ Network scan error: ${err.message}`);
+      this.log(`[ERROR] Network scan error: ${err.message}`);
       this.notify();
     }
     return this.devices;
@@ -162,7 +162,7 @@ class DeviceService {
       });
 
       if (res.ok) {
-        this.log(`[${timestamp}] 🎛️ CastV2 hardware synced -> Bass: ${eqData.bass >= 0 ? '+' : ''}${eqData.bass.toFixed(1)} dB, Treble: ${eqData.treble >= 0 ? '+' : ''}${eqData.treble.toFixed(1)} dB`);
+        this.log(`[${timestamp}] [CAST] Hardware sync -> Bass: ${eqData.bass >= 0 ? '+' : ''}${eqData.bass.toFixed(1)} dB, Treble: ${eqData.treble >= 0 ? '+' : ''}${eqData.treble.toFixed(1)} dB`);
       }
     } catch (err) {
       console.warn('CastV2 push failed:', err.message);
@@ -173,17 +173,17 @@ class DeviceService {
   async connectSpeaker(device) {
     if (!device || !device.ip) return false;
     const timestamp = new Date().toLocaleTimeString();
-    this.log(`[${timestamp}] 🔗 Connecting to "${device.name}" (${device.ip}:8009)...`);
+    this.log(`[${timestamp}] [CONNECT] Connecting to "${device.name}" (${device.ip}:8009)...`);
 
     try {
       await this.playSpeakerChime(device);
       await this.fetchRealHardwareEq(device);
       device.online = true;
-      this.log(`[${timestamp}] 🟢 Connected to "${device.name}"! CastV2 port 8009 ready.`);
+      this.log(`[${timestamp}] [OK] Connected to "${device.name}". CastV2 port 8009 ready.`);
       this.notify();
       return true;
     } catch (e) {
-      this.log(`[${timestamp}] ⚠️ Could not connect to speaker: ${e.message}`);
+      this.log(`[${timestamp}] [WARN] Could not connect to speaker: ${e.message}`);
       return false;
     }
   }
@@ -192,7 +192,7 @@ class DeviceService {
   async playSpeakerChime(device) {
     if (!device || !device.ip) return;
     const timestamp = new Date().toLocaleTimeString();
-    this.log(`[${timestamp}] 🔔 Triggering connect chime on "${device.name}" (${device.ip}:8009)...`);
+    this.log(`[${timestamp}] [CHIME] Triggering connect chime on "${device.name}" (${device.ip}:8009)...`);
 
     try {
       const res = await fetch('/api/devices/chime', {
@@ -202,13 +202,13 @@ class DeviceService {
       });
 
       if (res.ok) {
-        this.log(`[${timestamp}] 🔔 Connect chime sounded out loud on "${device.name}"!`);
+        this.log(`[${timestamp}] [OK] Connect chime sounded on "${device.name}"!`);
       } else {
         const err = await res.json();
-        this.log(`[${timestamp}] ⚠️ Could not sound chime: ${err.error || res.statusText}`);
+        this.log(`[${timestamp}] [WARN] Could not sound chime: ${err.error || res.statusText}`);
       }
     } catch (err) {
-      this.log(`[${timestamp}] ⚠️ Chime request error: ${err.message}`);
+      this.log(`[${timestamp}] [ERROR] Chime request error: ${err.message}`);
     }
   }
 
@@ -216,7 +216,7 @@ class DeviceService {
   async castMediaToSpeaker(device, mediaUrl, metadata = {}) {
     if (!device || !device.ip) return;
     const timestamp = new Date().toLocaleTimeString();
-    this.log(`[${timestamp}] 📡 Streaming audio directly to "${device.name}" (${device.ip}:8009)...`);
+    this.log(`[${timestamp}] [CAST] Streaming audio to "${device.name}" (${device.ip}:8009)...`);
 
     try {
       const res = await fetch('/api/devices/cast-media', {
@@ -235,14 +235,14 @@ class DeviceService {
 
       if (res.ok) {
         device.isStreaming = true;
-        this.log(`[${timestamp}] 🎵 Google Home is now PLAYING audio stream!`);
+        this.log(`[${timestamp}] [PLAYING] Google Home is playing audio stream.`);
         this.notify();
       } else {
         const err = await res.json();
-        this.log(`[${timestamp}] ⚠️ Cast error: ${err.error || res.statusText}`);
+        this.log(`[${timestamp}] [WARN] Cast error: ${err.error || res.statusText}`);
       }
     } catch (err) {
-      this.log(`[${timestamp}] ⚠️ Cast failed: ${err.message}`);
+      this.log(`[${timestamp}] [ERROR] Cast failed: ${err.message}`);
     }
   }
 
@@ -250,7 +250,7 @@ class DeviceService {
   async castLiveTabStreamToSpeaker(device) {
     if (!device || !device.ip) return;
     const timestamp = new Date().toLocaleTimeString();
-    this.log(`[${timestamp}] 📡 Routing live YouTube / Tab audio to "${device.name}" (${device.ip}:8009)...`);
+    this.log(`[${timestamp}] [STREAM] Routing live audio to "${device.name}" (${device.ip}:8009)...`);
 
     try {
       const res = await fetch('/api/devices/cast-live', {
@@ -261,14 +261,14 @@ class DeviceService {
 
       if (res.ok) {
         device.isStreaming = true;
-        this.log(`[${timestamp}] 🟢 LIVE STREAM ENGAGED: Google Home is now streaming your tab sound!`);
+        this.log(`[${timestamp}] [LIVE] Stream engaged: Google Home streaming active.`);
         this.notify();
       } else {
         const err = await res.json();
-        this.log(`[${timestamp}] ⚠️ Live cast error: ${err.error || res.statusText}`);
+        this.log(`[${timestamp}] [WARN] Live cast error: ${err.error || res.statusText}`);
       }
     } catch (err) {
-      this.log(`[${timestamp}] ⚠️ Live stream error: ${err.message}`);
+      this.log(`[${timestamp}] [ERROR] Live stream error: ${err.message}`);
     }
   }
 
@@ -276,7 +276,7 @@ class DeviceService {
   async disconnectSpeaker(device) {
     if (!device || !device.ip) return;
     const timestamp = new Date().toLocaleTimeString();
-    this.log(`[${timestamp}] 🛑 Disconnecting from "${device.name}" and stopping playback...`);
+    this.log(`[${timestamp}] [DISCONNECT] Stopping playback on "${device.name}"...`);
 
     try {
       const res = await fetch('/api/devices/disconnect', {
@@ -286,7 +286,7 @@ class DeviceService {
       });
 
       device.isStreaming = false;
-      this.log(`[${timestamp}] 🛑 Cleanly disconnected from "${device.name}". All sound stopped.`);
+      this.log(`[${timestamp}] [OK] Disconnected from "${device.name}".`);
       this.notify();
     } catch (e) {
       device.isStreaming = false;

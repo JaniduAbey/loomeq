@@ -55,11 +55,11 @@ class CastBridge {
         res.write(prebuffer);
 
         this.audioStreamSubscribers.add(res);
-        console.log(`[CastBridge] 🟢 Google Home (${req.socket.remoteAddress}) connected to dedicated audio stream on port ${port}!`);
+        console.log(`[CastBridge] [STREAM] Google Home (${req.socket.remoteAddress}) connected to dedicated audio stream on port ${port}!`);
 
         req.on('close', () => {
           this.audioStreamSubscribers.delete(res);
-          console.log(`[CastBridge] ⚪ Google Home audio stream connection closed.`);
+          console.log(`[CastBridge] [DISCONNECT] Google Home audio stream connection closed.`);
         });
         return;
       }
@@ -74,7 +74,7 @@ class CastBridge {
 
     this.audioServer.listen(port, '0.0.0.0', () => {
       globalThis.__audioServer = this.audioServer;
-      console.log(`[CastBridge] 🔊 Dedicated Live Audio Stream Server running on 0.0.0.0:${port}`);
+      console.log(`[CastBridge] [SERVER] Dedicated Live Audio Stream Server running on 0.0.0.0:${port}`);
     });
 
     // Keep-alive timer: ensure stream never stalls if browser pauses for a moment
@@ -388,7 +388,7 @@ class CastBridge {
             return reject(err);
           }
 
-          console.log(`[CastBridge] 🔔 CHIME SOUNDED on Google Home (${ip})!`);
+          console.log(`[CastBridge] [CHIME] Connect chime sounded on Google Home (${ip})!`);
           setTimeout(() => {
             try { client.close(); } catch (e) {}
             resolve({ success: true, ip, message: 'Google Home connect chime played successfully' });
@@ -446,7 +446,7 @@ class CastBridge {
               return reject(loadErr);
             }
 
-            console.log(`[CastBridge] 🎵 Media playing on Google Home (${ip}):`, status?.playerState);
+            console.log(`[CastBridge] [PLAYING] Media playing on Google Home (${ip}):`, status?.playerState);
             resolve({ success: true, ip, status });
           });
         });
@@ -492,7 +492,7 @@ class CastBridge {
                 if (stoppedCount >= apps.length) {
                   clearTimeout(timeout);
                   try { client.close(); } catch (e) {}
-                  console.log(`[CastBridge] 🛑 Successfully disconnected and stopped playback on ${ip}`);
+                  console.log(`[CastBridge] [STOP] Successfully disconnected and stopped playback on ${ip}`);
                   const dev = this.discoveredDevices.get(ip);
                   if (dev) dev.isStreaming = false;
                   resolve({ success: true, message: 'Speaker disconnected' });
@@ -502,7 +502,7 @@ class CastBridge {
           } else {
             clearTimeout(timeout);
             try { client.close(); } catch (e) {}
-            console.log(`[CastBridge] 🛑 No active media session on ${ip}, cleanly disconnected.`);
+            console.log(`[CastBridge] [STOP] No active media session on ${ip}, cleanly disconnected.`);
             const dev = this.discoveredDevices.get(ip);
             if (dev) dev.isStreaming = false;
             resolve({ success: true, message: 'Speaker disconnected' });
