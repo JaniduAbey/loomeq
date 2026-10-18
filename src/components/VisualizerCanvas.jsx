@@ -73,6 +73,8 @@ export function VisualizerCanvas({
   eqVersion,
   bass = 0,
   treble = 0,
+  tubeDrive = 0,
+  stereoWidth = 1.0,
   onChangeBass,
   onChangeTreble,
   activeTheme = 'lime',
@@ -338,6 +340,53 @@ export function VisualizerCanvas({
       ctx.fillStyle = curveFillGrad;
       ctx.fill();
 
+      // 5b. Visible Vacuum Tube Saturation Harmonic Warmth Glow
+      if (tubeDrive > 0.01) {
+        const warmGlowX = freqToX(320, width);
+        const warmGlowY = dbToY(0, height);
+        const warmRadius = width * 0.38;
+        const warmGrad = ctx.createRadialGradient(warmGlowX, warmGlowY, 10, warmGlowX, warmGlowY, warmRadius);
+        warmGrad.addColorStop(0, `rgba(245, 158, 11, ${tubeDrive * 0.26})`);
+        warmGrad.addColorStop(0.5, `rgba(245, 158, 11, ${tubeDrive * 0.09})`);
+        warmGrad.addColorStop(1, 'rgba(245, 158, 11, 0)');
+        ctx.fillStyle = warmGrad;
+        ctx.fillRect(0, 0, width, height);
+      }
+
+      // 5c. Visible Stereo Soundstage Field Imager
+      const centerX = width / 2;
+      const soundstageY = height - 16;
+      const maxSpread = width * 0.32;
+      const currentSpread = Math.max(4, (stereoWidth / 2) * maxSpread);
+      const leftBound = Math.max(10, centerX - currentSpread);
+      const rightBound = Math.min(width - 10, centerX + currentSpread);
+
+      ctx.save();
+      // Center reference pin
+      ctx.fillStyle = 'rgba(255, 255, 255, 0.3)';
+      ctx.fillRect(centerX - 0.5, soundstageY - 5, 1, 10);
+
+      // Soundstage beam fill
+      const stageGrad = ctx.createLinearGradient(leftBound, 0, rightBound, 0);
+      stageGrad.addColorStop(0, stereoWidth > 1.0 ? 'rgba(16, 242, 124, 0.45)' : 'rgba(56, 189, 248, 0.35)');
+      stageGrad.addColorStop(0.5, 'rgba(255, 255, 255, 0.06)');
+      stageGrad.addColorStop(1, stereoWidth > 1.0 ? 'rgba(16, 242, 124, 0.45)' : 'rgba(56, 189, 248, 0.35)');
+      ctx.fillStyle = stageGrad;
+      ctx.fillRect(leftBound, soundstageY - 1.5, rightBound - leftBound, 3);
+
+      // Left & Right soundstage boundaries
+      const wingColor = stereoWidth > 1.0 ? '#10f27c' : stereoWidth === 1.0 ? '#38bdf8' : '#f59e0b';
+      ctx.fillStyle = wingColor;
+      ctx.fillRect(leftBound - 1, soundstageY - 5, 2, 10);
+      ctx.fillRect(rightBound - 1, soundstageY - 5, 2, 10);
+
+      // Labels L and R
+      ctx.font = '700 8px "JetBrains Mono", monospace';
+      ctx.fillStyle = wingColor;
+      ctx.fillText('L', leftBound - 8, soundstageY + 3);
+      ctx.fillText('R', rightBound + 4, soundstageY + 3);
+      ctx.restore();
+
       // 6. Interactive Draggable Nodes
       const drawNode = (freq, gainDb, label, nodeColor, isHovered, isDragging) => {
         const nx = freqToX(freq, width);
@@ -400,7 +449,7 @@ export function VisualizerCanvas({
     return () => {
       if (animFrameRef.current) cancelAnimationFrame(animFrameRef.current);
     };
-  }, [eqVersion, bass, treble, themeColors, freqToX, dbToY, hoveredNode, activeDragNode]);
+  }, [eqVersion, bass, treble, tubeDrive, stereoWidth, themeColors, freqToX, dbToY, hoveredNode, activeDragNode]);
 
   return (
     <div className="visualizer-wrapper" ref={containerRef}>
@@ -409,6 +458,20 @@ export function VisualizerCanvas({
         <div className="visualizer-status-badge">
           <span className="live-dot-lime" />
           <span>REALTIME H(s) SPECTRUM</span>
+        </div>
+
+        {/* Live Warmth & Soundstage Badges */}
+        <div className="visualizer-dsp-badges">
+          {tubeDrive > 0 && (
+            <div className="dsp-pill warmth-active" title="Tube Saturation Warmth Active">
+              <span className="dsp-dot-amber" />
+              <span>Tube Warmth {Math.round(tubeDrive * 100)}%</span>
+            </div>
+          )}
+          <div className={`dsp-pill width-active ${stereoWidth > 1 ? 'wide' : stereoWidth < 1 ? 'narrow' : ''}`} title="Spatial Stereo Soundstage Width">
+            <span className="dsp-dot-lime" />
+            <span>Soundstage {Math.round(stereoWidth * 100)}% ({stereoWidth === 1 ? 'Natural' : stereoWidth < 1 ? 'Mono' : '3D Spatial'})</span>
+          </div>
         </div>
 
         <div className="visualizer-theme-pills">
@@ -458,6 +521,14 @@ export function VisualizerCanvas({
         <div className="legend-item">
           <div className="legend-color" style={{ background: themeColors.barTop }} />
           <span>Live FFT</span>
+        </div>
+        <div className="legend-item">
+          <div className="legend-color" style={{ background: '#f59e0b' }} />
+          <span>Warmth: {Math.round(tubeDrive * 100)}%</span>
+        </div>
+        <div className="legend-item">
+          <div className="legend-color" style={{ background: stereoWidth > 1 ? '#10f27c' : '#38bdf8' }} />
+          <span>Soundstage: {Math.round(stereoWidth * 100)}%</span>
         </div>
         <div className="legend-hint">
           <span>Drag nodes on curve to sculpt</span>

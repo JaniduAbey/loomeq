@@ -336,6 +336,8 @@ export function App() {
                 eqVersion={eqVersion}
                 bass={bass}
                 treble={treble}
+                tubeDrive={tubeDrive}
+                stereoWidth={stereoWidth}
                 onChangeBass={handleBassChange}
                 onChangeTreble={handleTrebleChange}
                 activeTheme={visualizerTheme}

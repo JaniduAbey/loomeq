@@ -245,9 +245,9 @@ export class AudioEngine {
     this.analyserNode.connect(this.localMonitorGainNode);
     this.localMonitorGainNode.connect(this.ctx.destination);
 
-    // Live PCM Chunk Streamer for Google Home
+    // Ultra-Low Latency PCM Streamer for Google Home (2048 samples = ~42ms latency)
     try {
-      this.streamProcessorNode = this.ctx.createScriptProcessor(4096, 2, 2);
+      this.streamProcessorNode = this.ctx.createScriptProcessor(2048, 2, 2);
       this.masterGainNode.connect(this.streamProcessorNode);
       const dummyGain = this.ctx.createGain();
       dummyGain.gain.setValueAtTime(0, this.ctx.currentTime);
@@ -269,11 +269,28 @@ export class AudioEngine {
           pcm[i * 2 + 1] = r < 0 ? r * 0x8000 : r * 0x7fff;
         }
 
-        fetch('/api/live-audio-chunk', {
-          method: 'POST',
-          body: pcm.buffer,
-          headers: { 'Content-Type': 'application/octet-stream' },
-        }).catch(() => {});
+        // 1. Primary: Instant WebSocket streaming (<1ms transfer time)
+        if (this.ws && this.ws.readyState === WebSocket.OPEN) {
+          try {
+            this.ws.send(pcm.buffer);
+            return;
+          } catch (err) {}
+        }
+
+        // Ensure WebSocket is connecting
+        this.initAudioStreamWebSocket();
+
+        // 2. Secondary fallback (only when WebSocket is connecting, throttled to prevent queueing)
+        if (!this.isPostingChunk) {
+          this.isPostingChunk = true;
+          fetch('/api/live-audio-chunk', {
+            method: 'POST',
+            body: pcm.buffer,
+            headers: { 'Content-Type': 'application/octet-stream' },
+          }).finally(() => {
+            this.isPostingChunk = false;
+          });
+        }
       };
     } catch (e) {
       console.warn('ScriptProcessor not available:', e);
@@ -316,6 +333,41 @@ export class AudioEngine {
     if (this.tubeSaturationNode) {
       this.tubeSaturationNode.curve = this.createDistortionCurve(this.tubeDrive);
     }
+  }
+
+  // Blumlein Mid/Side Spatial Soundstage Processor
+  setStereoWidth(widthFactor) {
+    const w = Math.max(0, Math.min(2.0, widthFactor));
+    this.currentStereoWidth = w;
+    if (this.ctx && this.gainLL && this.gainLR && this.gainRL && this.gainRR) {
+      const direct = 0.5 * (1 + w);
+      const cross = 0.5 * (1 - w);
+      const now = this.ctx.currentTime;
+      this.gainLL.gain.setTargetAtTime(direct, now, 0.015);
+      this.gainRR.gain.setTargetAtTime(direct, now, 0.015);
+      this.gainLR.gain.setTargetAtTime(cross, now, 0.015);
+      this.gainRL.gain.setTargetAtTime(cross, now, 0.015);
+    }
+  }
+
+  initAudioStreamWebSocket() {
+    if (typeof window === 'undefined') return;
+    if (this.ws && (this.ws.readyState === WebSocket.OPEN || this.ws.readyState === WebSocket.CONNECTING)) {
+      return;
+    }
+    const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
+    const wsUrl = `${protocol}//${window.location.host}/ws-audio`;
+    try {
+      this.ws = new WebSocket(wsUrl);
+      this.ws.binaryType = 'arraybuffer';
+      this.ws.onopen = () => {
+        console.log('[AudioEngine] Ultra-low latency WebSocket audio stream active.');
+      };
+      this.ws.onerror = () => {};
+      this.ws.onclose = () => {
+        this.ws = null;
+      };
+    } catch (e) {}
   }
 
   setAutoGainEnabled(enabled) {
@@ -706,7 +758,13 @@ export class AudioEngine {
 
   setLiveSpeakerStreaming(isStreaming) {
     this.isStreamingToSpeaker = !!isStreaming;
-    if (!isStreaming) {
+    if (isStreaming) {
+      this.initAudioStreamWebSocket();
+    } else {
+      if (this.ws) {
+        try { this.ws.close(); } catch (e) {}
+        this.ws = null;
+      }
       if (this.localMonitorGainNode && this.ctx && this.isHeadsetMuted) {
         this.localMonitorGainNode.gain.setValueAtTime(1, this.ctx.currentTime);
         this.isHeadsetMuted = false;

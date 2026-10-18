@@ -124,8 +124,9 @@ export function ClassicDials({
           max={100}
           step={1}
           unit="%"
-          color="#34d399"
-          glowColor="rgba(52, 211, 153, 0.6)"
+          color="#f59e0b"
+          glowColor="rgba(245, 158, 11, 0.75)"
+          knobType="warmth"
           onChange={(val) => handleTubeChange(val / 100)}
         />
 
@@ -141,6 +142,8 @@ export function ClassicDials({
           unit="%"
           color="#10f27c"
           glowColor="rgba(16, 242, 124, 0.6)"
+          knobType="width"
+          centerValue={100}
           onChange={(val) => handleWidthChange(val / 100)}
         />
       </div>
@@ -196,7 +199,8 @@ function StudioRotaryKnob({
   color,
   glowColor,
   onChange,
-  isBipolar = min < 0 && max > 0,
+  centerValue = (min < 0 && max > 0) ? 0 : null,
+  knobType = 'eq',
 }) {
   const knobRef = useRef(null);
   const isDragging = useRef(false);
@@ -211,22 +215,24 @@ function StudioRotaryKnob({
   const arcLength270 = 0.75 * circumference; // 216.77
   const halfArc = arcLength270 / 2; // 108.385 (135 degrees)
 
+  const isBipolar = centerValue !== null && centerValue !== undefined;
+
   // Bipolar Arc Calculations
   let arcDasharray = '0 1000';
   let arcTransform = 'rotate(135 60 60)';
 
   if (isBipolar) {
-    if (value > 0) {
-      const posNorm = Math.min(1, value / max);
+    if (value > centerValue) {
+      const posNorm = Math.min(1, (value - centerValue) / (max - centerValue));
       const posLen = Math.max(0.1, posNorm * halfArc);
       arcDasharray = `${posLen} ${circumference}`;
       arcTransform = 'rotate(-90 60 60)'; // Start at 12 o'clock and sweep clockwise
-    } else if (value < 0) {
-      const negNorm = Math.min(1, Math.abs(value) / Math.abs(min));
+    } else if (value < centerValue) {
+      const negNorm = Math.min(1, Math.abs(value - centerValue) / Math.abs(centerValue - min));
       const negLen = Math.max(0.1, negNorm * halfArc);
       const negAngle = negNorm * 135;
       arcDasharray = `${negLen} ${circumference}`;
-      arcTransform = `rotate(${-90 - negAngle} 60 60)`; // Start to the left and sweep up to 12 o'clock
+      arcTransform = `rotate(${-90 - negAngle} 60 60)`; // Sweep up to 12 o'clock
     }
   } else {
     if (norm > 0.005) {
@@ -264,6 +270,16 @@ function StudioRotaryKnob({
     window.removeEventListener('pointerup', handlePointerUp);
   };
 
+  // Live descriptors
+  let descriptor = '';
+  if (knobType === 'warmth') {
+    descriptor = value === 0 ? 'Clean Bypass' : value < 30 ? 'Subtle Warmth' : value < 65 ? 'Vintage Saturation' : 'Hot Tube Crunch';
+  } else if (knobType === 'width') {
+    descriptor = value === 100 ? 'Natural Stereo' : value === 0 ? 'Pure Mono' : value < 100 ? 'Focused Center' : '3D Spatial Field';
+  } else {
+    descriptor = value === 0 ? 'Flat (0 dB)' : value > 0 ? `+${value.toFixed(1)} dB Boost` : `${value.toFixed(1)} dB Cut`;
+  }
+
   return (
     <div className="knob-assembly-cell" id={id}>
       <div className="knob-title-wrap">
@@ -300,7 +316,7 @@ function StudioRotaryKnob({
                 y1={y1}
                 x2={x2}
                 y2={y2}
-                stroke={center ? 'rgba(16, 242, 124, 0.7)' : 'rgba(255, 255, 255, 0.18)'}
+                stroke={center ? (knobType === 'warmth' ? 'rgba(245, 158, 11, 0.7)' : 'rgba(16, 242, 124, 0.7)') : 'rgba(255, 255, 255, 0.18)'}
                 strokeWidth={center ? 1.8 : major ? 1.2 : 0.8}
                 strokeLinecap="round"
               />
@@ -321,7 +337,7 @@ function StudioRotaryKnob({
           />
 
           {/* Active glow arc */}
-          {((isBipolar && value !== 0) || (!isBipolar && norm > 0.005)) && (
+          {((isBipolar && value !== centerValue) || (!isBipolar && norm > 0.005)) && (
             <circle
               cx="60"
               cy="60"
@@ -342,8 +358,8 @@ function StudioRotaryKnob({
             y1={60 - radius - 2}
             x2="60"
             y2={60 - radius + 5}
-            stroke={value === 0 && isBipolar ? 'var(--color-lime)' : 'rgba(255, 255, 255, 0.35)'}
-            strokeWidth={value === 0 && isBipolar ? '2' : '1.2'}
+            stroke={(isBipolar ? value === centerValue : value === 0) ? color : 'rgba(255, 255, 255, 0.35)'}
+            strokeWidth={(isBipolar ? value === centerValue : value === 0) ? '2' : '1.2'}
             strokeLinecap="round"
           />
         </svg>
@@ -353,16 +369,64 @@ function StudioRotaryKnob({
           style={{ transform: `rotate(${angle}deg)` }}
         >
           <div className="knob-notch-pointer" style={{ background: color, boxShadow: `0 0 6px ${color}` }} />
-          <div className="knob-cap-center" />
+          
+          {/* Authentic Glowing Vacuum Tube Filament for Warmth */}
+          {knobType === 'warmth' ? (
+            <div
+              className="knob-cap-center tube-glow-center"
+              style={{
+                boxShadow: `0 0 ${4 + (value / 100) * 16}px rgba(245, 158, 11, ${0.2 + (value / 100) * 0.8})`,
+                borderColor: `rgba(245, 158, 11, ${0.2 + (value / 100) * 0.6})`,
+              }}
+            >
+              <div
+                className="tube-filament-coil"
+                style={{
+                  opacity: 0.15 + (value / 100) * 0.85,
+                  boxShadow: `0 0 ${3 + (value / 100) * 8}px #f59e0b`,
+                }}
+              />
+            </div>
+          ) : (
+            <div className="knob-cap-center" />
+          )}
         </div>
       </div>
 
       <div className="knob-digital-readout">
         <span className="readout-num" style={{ color }}>
-          {value > 0 ? `+${value}` : value}
+          {value > 0 && knobType === 'eq' ? `+${value}` : value}
         </span>
         <span className="readout-unit">{unit}</span>
       </div>
+
+      {/* Live Analog Characteristic Descriptor */}
+      <div className="knob-descriptor-badge">
+        <span
+          className="descriptor-dot"
+          style={{
+            background: knobType === 'warmth'
+              ? (value > 0 ? '#f59e0b' : '#334155')
+              : knobType === 'width'
+              ? (value > 100 ? '#10f27c' : value === 100 ? '#38bdf8' : '#f59e0b')
+              : (value !== 0 ? '#10f27c' : '#334155'),
+          }}
+        />
+        <span>{descriptor}</span>
+      </div>
+
+      {/* Soundstage Spread Track for Width */}
+      {knobType === 'width' && (
+        <div className="knob-soundstage-track" title={`Soundstage Spread: ${value}%`}>
+          <div
+            className="soundstage-track-fill"
+            style={{
+              width: `${Math.min(100, (value / 200) * 100)}%`,
+              background: value > 100 ? '#10f27c' : value === 100 ? '#38bdf8' : '#f59e0b',
+            }}
+          />
+        </div>
+      )}
     </div>
   );
 }

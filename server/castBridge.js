@@ -50,8 +50,8 @@ class CastBridge {
         // 1. Send 44-byte WAV header (48kHz 16-bit Stereo PCM)
         res.write(createWavHeader(48000, 2));
 
-        // 2. Pre-buffer 0.5s stereo silence so Google Home DAC immediately starts playing
-        const prebuffer = Buffer.alloc(Math.floor(48000 * 2 * 2 * 0.5));
+        // 2. Pre-buffer 0.12s stereo silence so Google Home DAC immediately transitions to PLAYING
+        const prebuffer = Buffer.alloc(Math.floor(48000 * 2 * 2 * 0.12));
         res.write(prebuffer);
 
         this.audioStreamSubscribers.add(res);

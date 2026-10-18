@@ -1593,3 +1593,128 @@ input, select, textarea {
 .btn-pill-action:active {
   transform: translateY(0);
 }
+
+/* =========================================================================
+   Visual Warmth & Soundstage Width Enhancements
+   ========================================================================= */
+/* Vacuum Tube Filament Glow in Knob Cap */
+.tube-glow-center {
+  background: radial-gradient(circle at 45% 45%, #241403 0%, #100802 60%, #030406 100%) !important;
+  border: 1px solid rgba(245, 158, 11, 0.4) !important;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: box-shadow 120ms ease, border-color 120ms ease;
+}
+
+.tube-filament-coil {
+  width: 14px;
+  height: 3px;
+  background: #f59e0b;
+  border-radius: 2px;
+  box-shadow: 0 0 8px #f59e0b, 0 0 16px rgba(245, 158, 11, 0.8);
+  transition: opacity 120ms ease, box-shadow 120ms ease;
+}
+
+/* Knob Analog Descriptor Badge */
+.knob-descriptor-badge {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  font-family: var(--font-mono);
+  font-size: 0.62rem;
+  font-weight: 700;
+  color: #94a3b8;
+  background: #020304;
+  border: 1px solid rgba(255, 255, 255, 0.05);
+  padding: 2px 7px;
+  border-radius: var(--radius-sm);
+  white-space: nowrap;
+  letter-spacing: 0.02em;
+}
+
+.descriptor-dot {
+  width: 5px;
+  height: 5px;
+  border-radius: 50%;
+  display: inline-block;
+  transition: background 150ms ease, box-shadow 150ms ease;
+}
+
+/* Stereo Soundstage Width Track */
+.knob-soundstage-track {
+  width: 72px;
+  height: 3px;
+  background: rgba(255, 255, 255, 0.06);
+  border-radius: 2px;
+  overflow: hidden;
+  position: relative;
+  margin-top: 1px;
+}
+
+.soundstage-track-fill {
+  height: 100%;
+  border-radius: 2px;
+  transition: width 80ms ease-out, background 120ms ease;
+  box-shadow: 0 0 6px currentColor;
+}
+
+/* Visualizer Top Bar Live DSP Badges */
+.visualizer-dsp-badges {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.dsp-pill {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  font-family: var(--font-mono);
+  font-size: 0.65rem;
+  font-weight: 700;
+  padding: 3px 8px;
+  border-radius: var(--radius-full);
+  background: rgba(4, 6, 8, 0.9);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  backdrop-filter: blur(8px);
+  color: #cbd5e1;
+  animation: fadeIn 150ms ease-out;
+}
+
+.dsp-pill.warmth-active {
+  border-color: rgba(245, 158, 11, 0.4);
+  color: #fbbf24;
+  background: rgba(245, 158, 11, 0.08);
+  box-shadow: 0 0 10px rgba(245, 158, 11, 0.25);
+}
+
+.dsp-pill.width-active.wide {
+  border-color: rgba(16, 242, 124, 0.4);
+  color: var(--color-lime);
+  background: rgba(16, 242, 124, 0.08);
+}
+
+.dsp-pill.width-active.narrow {
+  border-color: rgba(56, 189, 248, 0.4);
+  color: #38bdf8;
+  background: rgba(56, 189, 248, 0.08);
+}
+
+.dsp-dot-amber {
+  width: 5px;
+  height: 5px;
+  border-radius: 50%;
+  background: #f59e0b;
+  box-shadow: 0 0 6px #f59e0b;
+  animation: lime-glow-pulse 2s infinite ease-in-out;
+}
+
+.dsp-dot-lime {
+  width: 5px;
+  height: 5px;
+  border-radius: 50%;
+  background: var(--color-lime);
+  box-shadow: 0 0 6px var(--color-lime);
+  animation: lime-glow-pulse 2s infinite ease-in-out;
+}

@@ -1,5 +1,6 @@
 import { defineConfig } from 'vite';
 import react from '@vitejs/plugin-react';
+import { WebSocketServer } from 'ws';
 import { castBridge, createWavHeader } from './server/castBridge.js';
 
 function castApiPlugin() {
@@ -8,6 +9,25 @@ function castApiPlugin() {
     configureServer(server) {
       // Trigger initial real scan in background
       castBridge.scan().catch((err) => console.error('Initial scan error:', err));
+
+      // Ultra-low latency WebSocket Audio Server for real-time live streaming
+      const wss = new WebSocketServer({ noServer: true });
+
+      server.httpServer?.on('upgrade', (request, socket, head) => {
+        const url = new URL(request.url, 'http://localhost:5173');
+        if (url.pathname === '/ws-audio') {
+          wss.handleUpgrade(request, socket, head, (ws) => {
+            wss.emit('connection', ws, request);
+          });
+        }
+      });
+
+      wss.on('connection', (ws) => {
+        ws.on('message', (message) => {
+          const buffer = Buffer.isBuffer(message) ? message : Buffer.from(message);
+          castBridge.broadcastAudioChunk(buffer);
+        });
+      });
 
       server.middlewares.use(async (req, res, next) => {
         const url = new URL(req.url, 'http://localhost:5173');
